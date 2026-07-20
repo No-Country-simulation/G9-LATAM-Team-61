@@ -1,0 +1,84 @@
+# -----------------------------------------------------------------------------
+# TechMind - public repository ignore rules
+# -----------------------------------------------------------------------------
+
+# Local experimentation: never publish this directory.
+/sandbox/
+
+# Private planning and internal context must remain outside this repository.
+
+# Secrets and local configuration.
+.env
+.env.*
+!.env.example
+.oci/
+oci_config
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python environments and bytecode.
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python tooling, tests and coverage.
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+
+# Packaging and generated build output.
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Jupyter.
+.ipynb_checkpoints/
+
+# Local databases, caches, logs and temporary files.
+*.db
+*.sqlite
+*.sqlite3
+.cache/
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# Terraform/OpenTofu local state and sensitive variable files.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+
+# Optional JavaScript/frontend dependencies and builds.
+node_modules/
+.next/
+out/
+
+# Editors and operating systems.
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
