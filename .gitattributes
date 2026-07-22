@@ -1,0 +1,16 @@
+# Normalize text files across Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Keep Windows command scripts compatible with native tooling.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Treat generated and binary assets as binary.
+*.gif binary
+*.jpeg binary
+*.jpg binary
+*.pdf binary
+*.png binary
+*.pkl binary
+*.joblib binary
