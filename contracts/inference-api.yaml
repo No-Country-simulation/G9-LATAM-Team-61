@@ -1,0 +1,172 @@
+openapi: 3.1.0
+info:
+  title: API interna de inferencia de TechMind
+  version: 0.1.0-draft
+  description: >-
+    Contrato propuesto entre Spring Boot y FastAPI. No representa todavía
+    una decisión aprobada del equipo.
+paths:
+  /v1/health:
+    get:
+      operationId: consultarSaludInferencia
+      summary: Comprueba que el servicio y el modelo estén disponibles
+      responses:
+        '200':
+          description: Servicio listo para recibir predicciones
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaSalud'
+        '503':
+          description: Servicio activo, pero modelo no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /v1/predict:
+    post:
+      operationId: predecirContenido
+      summary: Clasifica un contenido técnico individual
+      parameters:
+        - $ref: '#/components/parameters/IdSolicitud'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitudPrediccion'
+            examples:
+              springBoot:
+                externalValue: './examples/predict-request.json'
+      responses:
+        '200':
+          description: Predicción completada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaPrediccion'
+              examples:
+                backend:
+                  externalValue: './examples/predict-response.json'
+        '400':
+          description: Solicitud vacía o semánticamente inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '422':
+          description: La estructura de la solicitud no cumple el contrato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '500':
+          description: Error interno controlado durante la inferencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '503':
+          description: Modelo no cargado o servicio temporalmente indisponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+components:
+  parameters:
+    IdSolicitud:
+      name: X-Request-Id
+      in: header
+      required: true
+      description: Identificador generado o propagado por Spring Boot
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    SolicitudPrediccion:
+      type: object
+      additionalProperties: false
+      required:
+        - texto
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Título opcional del contenido
+        texto:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: Contenido técnico que procesará el modelo
+    RespuestaPrediccion:
+      type: object
+      additionalProperties: false
+      required:
+        - categoria
+        - probabilidad
+        - palabras_clave
+        - version_modelo
+      properties:
+        categoria:
+          type: string
+          minLength: 1
+          description: Categoría predicha; la taxonomía se aprobará por separado
+        probabilidad:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        palabras_clave:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+        version_modelo:
+          type: string
+          minLength: 1
+        tiempo_procesamiento_ms:
+          type: integer
+          minimum: 0
+    RespuestaSalud:
+      type: object
+      additionalProperties: false
+      required:
+        - estado
+        - modelo_cargado
+      properties:
+        estado:
+          type: string
+          enum:
+            - ok
+        modelo_cargado:
+          type: boolean
+          const: true
+        version_modelo:
+          type:
+            - string
+            - 'null'
+    ErrorApi:
+      type: object
+      additionalProperties: false
+      required:
+        - codigo
+        - mensaje
+      properties:
+        codigo:
+          type: string
+          minLength: 1
+        mensaje:
+          type: string
+          minLength: 1
+        id_solicitud:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        detalles:
+          type: array
+          items:
+            type: string

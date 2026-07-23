@@ -1,0 +1,11 @@
+{
+  "categoria": "Backend",
+  "probabilidad": 0.89,
+  "palabras_clave": [
+    "Java",
+    "Spring Boot",
+    "API REST"
+  ],
+  "version_modelo": "0.1.0",
+  "tiempo_procesamiento_ms": 124
+}
