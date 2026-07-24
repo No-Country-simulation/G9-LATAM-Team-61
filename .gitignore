@@ -47,8 +47,22 @@ dist/
 .eggs/
 pip-wheel-metadata/
 
+# Java, Maven and Spring Boot.
+target/
+*.class
+.gradle/
+**/src/main/resources/application-local.properties
+
 # Jupyter.
 .ipynb_checkpoints/
+
+# Data Science datasets and generated model artifacts.
+*.parquet
+*.feather
+*.arrow
+*.pkl
+*.joblib
+*.onnx
 
 # Local databases, caches, logs and temporary files.
 *.db
@@ -71,6 +85,8 @@ crash.log
 
 # Optional JavaScript/frontend dependencies and builds.
 node_modules/
+.vite/
+coverage/
 .next/
 out/
 
