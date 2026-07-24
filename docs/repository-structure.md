@@ -16,6 +16,7 @@ decisiones pendientes de Data o DevOps en acuerdos definitivos.
 ├── frontend/
 ├── inference-service/
 ├── data-science/
+├── infra/
 ├── contracts/
 ├── docs/
 ├── .github/
@@ -31,6 +32,7 @@ decisiones pendientes de Data o DevOps en acuerdos definitivos.
 | `frontend/` | React: experiencia de usuario y consumo exclusivo de Spring Boot. | Frontend / Full Stack |
 | `inference-service/` | FastAPI: carga del pipeline y ejecución de inferencias. | Data / Backend de inferencia |
 | `data-science/` | Exploración, preparación, entrenamiento y evaluación reproducible. | Data |
+| `infra/` | Infraestructura, automatización de despliegue y preparación de OCI. | DevOps |
 | `contracts/` | Contratos y ejemplos de integración versionados. | Áreas consumidoras y proveedoras |
 | `docs/` | Arquitectura, ADR y decisiones transversales. | Equipo / Tech Lead |
 | `.github/` | Plantillas y automatizaciones comunes del repositorio. | DevOps / Equipo |
@@ -72,6 +74,16 @@ decisiones pendientes de Data o DevOps en acuerdos definitivos.
 - Los puertos y credenciales locales deberán configurarse mediante variables,
   no mediante secretos confirmados en Git.
 
+## Infraestructura y despliegue
+
+- `infra/` concentra la infraestructura y la automatización de despliegue.
+- OCI es el proveedor objetivo del proyecto.
+- La topología, región, servicios y recursos todavía no están definidos.
+- Terraform es una opción prevista, pero aún no una decisión aprobada.
+- No se versionan credenciales, claves, archivos de estado ni secretos.
+- `infra/terraform/` se creará únicamente cuando el equipo apruebe el uso de
+  Terraform y exista una configuración que pueda validarse.
+
 ## Datos y modelos
 
 - No se versionan datasets completos, datos procesados ni modelos generados.
@@ -95,13 +107,23 @@ decisiones pendientes de Data o DevOps en acuerdos definitivos.
 - Contrato definitivo Spring Boot–FastAPI.
 - Persistencia funcional definitiva.
 - Topología final, región o servicios de OCI.
+- Adopción definitiva de Terraform.
 - Contenido del Compose integrado.
 - Herramientas y reglas definitivas de CI/CD.
+
+## Elementos pendientes
+
+- `infra/terraform/`.
+- `compose.yaml` en la raíz.
+- `.env.example` en la raíz.
+- `.github/workflows/`.
+- Subdirectorios internos de `data-science/`.
+- Reorganización adicional de `contracts/`.
 
 ## Criterios para aprobar la estructura
 
 - El Tech Lead confirma los nombres y límites de las carpetas.
 - Backend confirma que su proyecto permanecerá en `backend/`.
 - Data confirma la separación entre `data-science/` e `inference-service/`.
-- DevOps confirma que la estructura permite Compose, CI/CD y OCI sin introducir
-  secretos ni dependencias circulares.
+- DevOps confirma que `infra/` permite preparar OCI, Compose y CI/CD sin
+  introducir secretos ni dependencias circulares.

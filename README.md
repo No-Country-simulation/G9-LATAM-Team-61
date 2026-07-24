@@ -28,6 +28,7 @@ Frontend React → Backend Spring Boot → FastAPI/modelo
 ├── frontend/            # Interfaz web React
 ├── inference-service/   # Servicio FastAPI de inferencia
 ├── data-science/        # Preparación de datos, notebooks y entrenamiento
+├── infra/               # Infraestructura y automatización de despliegue
 ├── contracts/           # Contratos versionados entre componentes
 └── docs/                # Arquitectura, ADR y documentación transversal
 ```
