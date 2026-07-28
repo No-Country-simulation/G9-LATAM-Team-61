@@ -8,7 +8,7 @@ Plataforma Web interactiva para la organización, clasificación temática y exp
 
 El sistema permite a profesionales y estudiantes de tecnología transformar grandes volúmenes de documentación desestructurada en una base de conocimiento organizada automáticamente.
 
-### Características Principales (Objetivo MVP y Post-MVP):
+### Características Principales:
 - **Clasificación Automática**: Inferencia temática de textos en 5 categorías principales (*Backend*, *Frontend*, *DevOps*, *Data Science*, *Mobile*).
 - **Extracción de Palabras Clave**: Algoritmo TF-IDF para identificar etiquetas clave de cada documento.
 - **Analítica en Tiempo Real**: Métricas de precisión, volumen indexado y latencia de inferencia.
@@ -24,7 +24,6 @@ El sistema permite a profesionales y estudiantes de tecnología transformar gran
 |------|-----------|-------------|
 | **Framework Web** | React (Vite) | SPA ligera, rápida y moderna |
 | **Estilos & UI** | Vanilla CSS (Tokens) | Sistema de diseño SaaS Enterprise Light basado en `mockup_single_page.html` |
-| **Iconografía** | Lucide React | Iconos vectoriales SaaS accesibles |
 | **Backend Orquestador** | Java (Spring Boot) | API REST pública y persistencia en PostgreSQL (Integración) |
 | **Inferencia IA** | Python (FastAPI) | Microservicio de inferencia con modelos Scikit-Learn / TF-IDF / K-Means |
 
@@ -61,5 +60,4 @@ Front Hackathon/
 - [x] **Fase 3**: Módulo de Analítica y Búsqueda Semántica.
 - [x] **Fase 4**: Tabla de Últimos Procesados e Historial Paginado.
 - [x] **Fase 5**: Explorador de Clusters K-Means (`POST /agrupar`), Carga Masiva CSV (`POST /lote`), Configuración y API Docs.
-- [ ] **Fase 6**: Conexión REST HTTP en Vivo con Backend Spring Boot / FastAPI y QA final.
-
+- [x] **Fase 6**: Conexión REST HTTP en Vivo con Backend Spring Boot / FastAPI y QA final.

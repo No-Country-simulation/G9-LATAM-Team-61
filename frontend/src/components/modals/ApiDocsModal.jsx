@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * REST API Documentation Modal Component (Phase 5)
+ * REST API Documentation Modal Component (Updated Endpoint Paths)
  */
 export function ApiDocsModal({ isOpen, onClose }) {
   if (!isOpen) return null;
@@ -37,17 +37,17 @@ export function ApiDocsModal({ isOpen, onClose }) {
         </h3>
         <div className="api-endpoint">
           <span className="method-post">POST</span>
-          <span className="api-path">/api/v1/contenido</span>
+          <span className="api-path">/api/contenido</span>
           <span className="api-desc">Clasifica documento síncrono.</span>
         </div>
         <div className="api-endpoint">
           <span className="method-post">POST</span>
-          <span className="api-path">/api/v1/contenido/lote</span>
+          <span className="api-path">/api/contenido/lote</span>
           <span className="api-desc">Carga masiva (CSV array).</span>
         </div>
         <div className="api-endpoint">
           <span className="method-post">POST</span>
-          <span className="api-path">/api/v1/contenido/agrupar</span>
+          <span className="api-path">/api/contenido/agrupar</span>
           <span className="api-desc">Dispara Clustering (K-Means).</span>
         </div>
 
@@ -56,17 +56,17 @@ export function ApiDocsModal({ isOpen, onClose }) {
         </h3>
         <div className="api-endpoint">
           <span className="method-get">GET</span>
-          <span className="api-path">/api/v1/buscar</span>
+          <span className="api-path">/api/buscar</span>
           <span className="api-desc">Búsqueda semántica inteligente.</span>
         </div>
         <div className="api-endpoint">
           <span className="method-get">GET</span>
-          <span className="api-path">/api/v1/contenido/{'{id}'}/recomendados</span>
+          <span className="api-path">/api/contenido/{'{id}'}/recomendados</span>
           <span className="api-desc">Obtiene documentos similares.</span>
         </div>
         <div className="api-endpoint">
           <span className="method-get">GET</span>
-          <span className="api-path">/api/v1/categorias</span>
+          <span className="api-path">/api/categorias</span>
           <span className="api-desc">Lista 5 categorías estáticas.</span>
         </div>
       </div>

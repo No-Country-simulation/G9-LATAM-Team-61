@@ -12,7 +12,12 @@ import UploadModal from './components/bulk/UploadModal';
 import ConfigModal from './components/modals/ConfigModal';
 import ApiDocsModal from './components/modals/ApiDocsModal';
 
-import { classifyContent, INITIAL_DOCUMENTS, INITIAL_CLUSTERS } from './services/kmsApi';
+import {
+  classifyContent,
+  checkBackendHealth,
+  INITIAL_DOCUMENTS,
+  INITIAL_CLUSTERS,
+} from './services/kmsApi';
 import './App.css';
 
 export function App() {
@@ -23,6 +28,7 @@ export function App() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isReclustering, setIsReclustering] = useState(false);
+  const [isApiLive, setIsApiLive] = useState(false);
 
   const [activeModal, setActiveModal] = useState(null);
   const [resultData, setResultData] = useState(null);
@@ -32,6 +38,15 @@ export function App() {
     message: '',
     type: 'info',
   });
+
+  // Check API Connection status on mount
+  useEffect(() => {
+    async function verifyHealth() {
+      const isAlive = await checkBackendHealth();
+      setIsApiLive(isAlive);
+    }
+    verifyHealth();
+  }, []);
 
   // ESC key listener to close modals
   useEffect(() => {
@@ -62,15 +77,20 @@ export function App() {
     try {
       const result = await classifyContent(formData);
       setIsProcessing(false);
-      
+
       setDocuments((prev) => [result, ...prev]);
       setTotalCount((prev) => prev + 1);
       setResultData(result);
       setActiveModal('result');
-      showToast('¡Documento clasificado e indexado exitosamente!', 'success');
+
+      if (result.isLiveApi) {
+        showToast('¡Documento clasificado en vivo por Spring Boot!', 'success');
+      } else {
+        showToast('¡Documento clasificado e indexado (Modo Demo)!', 'success');
+      }
     } catch (error) {
       setIsProcessing(false);
-      showToast('Error en la clasificación del contenido', 'error');
+      showToast('Error en el servicio de clasificación de contenido', 'error');
     }
   };
 
@@ -99,13 +119,14 @@ export function App() {
       <Toast toastState={toastState} />
 
       <main className="main-content">
-        {/* Top Bar Header (Fase 1 + Fase 5 modal triggers) */}
+        {/* Top Bar Header (Fase 1 + Fase 6 Status) */}
         <Header
           onOpenConfig={() => setActiveModal('config')}
           onOpenApiDocs={() => setActiveModal('api')}
+          isApiLive={isApiLive}
         />
 
-        {/* FILA 1: Top Grid completo (Fases 2 y 3) */}
+        {/* FILA 1: Top Grid completo */}
         <div className="top-grid">
           <DataInputForm
             onClassify={handleClassify}
@@ -120,16 +141,14 @@ export function App() {
           />
         </div>
 
-        {/* FILA 2: Bottom Grid completo (Fases 4 y 5) */}
+        {/* FILA 2: Bottom Grid completo */}
         <section id="sec-resultados" className="bottom-grid">
-          {/* Columna Izquierda: Tabla de Últimos Procesados (Fase 4) */}
           <RecentTable
             documents={documents}
             searchQuery={searchQuery}
             onOpenHistory={() => setActiveModal('history')}
           />
 
-          {/* Columna Derecha: Explorador de Clusters K-Means (Fase 5) */}
           <ClusterWidget
             clusters={clusters}
             isReclustering={isReclustering}

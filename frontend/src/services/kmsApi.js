@@ -1,4 +1,6 @@
-// Service layer for KMS Inference API & Mock Datasets
+// KMS API Client Service (Live HTTP REST + Mock Fallback - Phase 6)
+
+export const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 export const INITIAL_DOCUMENTS = [
   { id: 1, title: 'Manejo de errores JWT', category: 'Backend', badgeClass: 'backend', tags: 'spring, auth, token', date: 'Hoy, 14:30' },
@@ -27,12 +29,59 @@ export function inferTitleFromContent(text) {
 }
 
 /**
- * Classify a text payload (simulating POST /api/contenido endpoint)
+ * Health Check to test connection to Spring Boot / FastAPI backend
  */
-export async function classifyContent({ title, content }) {
+export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const response = await fetch(`${apiUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch (err) {
+    return false; // Backend is offline / unreachable
+  }
+}
+
+/**
+ * Classify a text payload (POST /api/contenido or fallback to local ML model simulation)
+ */
+export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL) {
   const contentText = (content || '').trim();
   const docTitle = (title || '').trim() || inferTitleFromContent(contentText);
 
+  try {
+    const response = await fetch(`${apiUrl}/contenido`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: docTitle, texto: contentText }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const category = data.categoria || 'Backend';
+      const badgeClass = category.toLowerCase().replace(/\s+/g, '');
+      const confidence = data.probabilidad ? `${(data.probabilidad * 100).toFixed(1)}%` : '94.5%';
+      const tags = Array.isArray(data.informacion_adicional)
+        ? data.informacion_adicional.join(', ')
+        : 'java, spring, rest';
+
+      return {
+        id: data.id_registro || Date.now(),
+        title: docTitle,
+        category,
+        badgeClass,
+        confidence,
+        tags,
+        date: 'Hace un momento',
+        isLiveApi: true,
+      };
+    }
+  } catch (error) {
+    console.warn('Spring Boot API unavailable. Falling back to local ML inference simulation.', error);
+  }
+
+  // Graceful Local Fallback Simulation
   const lower = contentText.toLowerCase();
   let category = 'Backend';
   let badgeClass = 'backend';
@@ -57,7 +106,6 @@ export async function classifyContent({ title, content }) {
     tags = 'android, ios, app';
   }
 
-  // Simulated HTTP latency
   await new Promise((resolve) => setTimeout(resolve, 700));
 
   return {
@@ -68,5 +116,6 @@ export async function classifyContent({ title, content }) {
     confidence,
     tags,
     date: 'Hace un momento',
+    isLiveApi: false,
   };
 }
