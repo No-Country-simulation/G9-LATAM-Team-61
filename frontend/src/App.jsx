@@ -3,11 +3,14 @@ import Header from './components/layout/Header';
 import Toast from './components/common/Toast';
 import DataInputForm from './components/classification/DataInputForm';
 import ResultModal from './components/classification/ResultModal';
+import AnalyticsSearch from './components/dashboard/AnalyticsSearch';
 
 import { classifyContent } from './services/kmsApi';
 import './App.css';
 
 export function App() {
+  const [totalCount, setTotalCount] = useState(1204);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [resultData, setResultData] = useState(null);
@@ -47,6 +50,7 @@ export function App() {
     try {
       const result = await classifyContent(formData);
       setIsProcessing(false);
+      setTotalCount((prev) => prev + 1);
       setResultData(result);
       setActiveModal('result');
       showToast('¡Documento clasificado e indexado exitosamente!', 'success');
@@ -62,13 +66,13 @@ export function App() {
       <Toast toastState={toastState} />
 
       <main className="main-content">
-        {/* Top Bar Header (Phase 1) */}
+        {/* Top Bar Header (Fase 1) */}
         <Header
           onOpenConfig={() => showToast('Modal de Configuración (Disponible en Fase 5)')}
           onOpenApiDocs={() => showToast('Modal de Docs API (Disponible en Fase 5)')}
         />
 
-        {/* FILA 1: Top Grid */}
+        {/* FILA 1: Top Grid completo (Fase 2 + Fase 3) */}
         <div className="top-grid">
           {/* Columna Izquierda: Formulario de Clasificación (Fase 2) */}
           <DataInputForm
@@ -77,10 +81,12 @@ export function App() {
             isProcessing={isProcessing}
           />
 
-          {/* Columna Derecha: Ranura para Analítica y Búsqueda (Fase 3) */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '260px', opacity: 0.7, borderStyle: 'dashed' }}>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>[Fase 3: Módulo de Analítica y Búsqueda Semántica]</p>
-          </div>
+          {/* Columna Derecha: Módulo de Analítica y Búsqueda Semántica (Fase 3) */}
+          <AnalyticsSearch
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            totalCount={totalCount}
+          />
         </div>
 
         {/* FILA 2: Bottom Grid (Fases 4 y 5) */}
