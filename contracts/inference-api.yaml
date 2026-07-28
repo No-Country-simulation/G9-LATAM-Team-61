@@ -1,42 +1,43 @@
 openapi: 3.1.0
 info:
-  title: Borrador de API interna de inferencia de TechMind
-  version: 0.2.0-draft
+  title: Contrato base de API interna de inferencia de TechMind
+  version: 0.3.0-baseline
   description: >-
-    Propuesta pendiente de validación por Data para la integración entre
-    Spring Boot y FastAPI. No representa un contrato aprobado ni describe
-    el mock temporal /analizar.
-x-estado: pendiente-validacion-data
+    Baseline funcional vigente para la integración entre Spring Boot y FastAPI,
+    derivado de la planificación por sprints del Tech Lead. Los detalles
+    operativos pendientes se acordarán sin bloquear la implementación inicial.
+x-estado: baseline-vigente
 paths:
   /predict:
     post:
       operationId: predecirContenido
-      summary: Propuesta para clasificar un contenido técnico individual
+      summary: Clasifica un contenido técnico individual
       description: >-
-        Endpoint y esquemas sujetos a validación o ajuste por Data y posterior
-        revisión de compatibilidad por Backend.
+        Contrato base que deben implementar Data y Backend. Los cambios
+        incompatibles requieren un acuerdo explícito y una actualización de
+        este documento.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SolicitudPrediccionPropuesta'
+              $ref: '#/components/schemas/SolicitudPrediccion'
             examples:
-              propuesta:
-                externalValue: './examples/inference-request.proposed.json'
+              baseline:
+                externalValue: './examples/inference-request.json'
       responses:
         '200':
-          description: Respuesta propuesta para una predicción completada
+          description: Predicción completada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RespuestaPrediccionPropuesta'
+                $ref: '#/components/schemas/RespuestaPrediccion'
               examples:
-                propuesta:
-                  externalValue: './examples/inference-response.proposed.json'
+                baseline:
+                  externalValue: './examples/inference-response.json'
 components:
   schemas:
-    SolicitudPrediccionPropuesta:
+    SolicitudPrediccion:
       type: object
       additionalProperties: false
       required:
@@ -44,8 +45,8 @@ components:
       properties:
         contenido_crudo:
           type: string
-          description: Texto compuesto que se propone enviar al servicio real
-    RespuestaPrediccionPropuesta:
+          description: Texto compuesto que Spring Boot envía al servicio real
+    RespuestaPrediccion:
       type: object
       additionalProperties: false
       required:
@@ -59,7 +60,9 @@ components:
         probabilidad:
           type: number
           format: double
-          description: Confianza o probabilidad según defina Data
+          minimum: 0
+          maximum: 1
+          description: Confianza o probabilidad devuelta por el modelo
         palabras_clave:
           type: array
           items:

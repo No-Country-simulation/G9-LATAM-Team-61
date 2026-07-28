@@ -1,14 +1,14 @@
 # Arquitectura e integración de TechMind
 
-> Estado: documento de alineación. Registra acuerdos confirmados, el estado
-> temporal de la implementación y propuestas que todavía requieren validación.
+> Estado: baseline operativo vigente. Registra acuerdos confirmados, el estado
+> temporal de la implementación y detalles técnicos todavía pendientes.
 
 ## Propósito
 
 Este documento formaliza la integración que el equipo viene desarrollando sin
-reemplazar la planificación por sprints definida por el Tech Lead. Cuando un
-punto aún no ha sido aprobado, se identifica expresamente como propuesta o
-recomendación.
+reemplazar la planificación por sprints definida por el Tech Lead. Los cambios
+incompatibles con este baseline requieren una decisión explícita y registrada
+del equipo.
 
 ## Estado de las decisiones
 
@@ -17,8 +17,8 @@ recomendación.
 | Arquitectura general | Confirmado | React → Spring Boot → FastAPI/modelo, con PostgreSQL para la persistencia acordada por Backend y despliegue en OCI. |
 | API Frontend → Spring Boot | Confirmado | `POST /api/contenido` recibe `titulo` y `descripcion`. |
 | Integración temporal Spring Boot → mock | Temporal | Spring Boot invoca `/analizar` y envía `contenido_crudo`. Permite avanzar a Backend durante el Sprint 1. |
-| Integración Spring Boot → FastAPI real | Pendiente de Data | Se propone `POST /predict`, con `contenido_crudo`, y una respuesta con `categoria`, `probabilidad` y `palabras_clave`. |
-| Idioma, dataset y taxonomía | Pendiente de Data | Data los definirá antes del meet del lunes y validará o ajustará el contrato propuesto. |
+| Integración Spring Boot → FastAPI real | Baseline confirmado | `POST /predict`, con `contenido_crudo`, y respuesta con `categoria`, `probabilidad` y `palabras_clave`. |
+| Idioma, dataset y taxonomía | Pendiente de Data | Data debe definirlos para completar el modelo; no bloquean el contrato funcional ni aportes independientes de otras áreas. |
 | Topología y controles de OCI | Recomendación DevOps | DevOps puede avanzar con el preflight y una propuesta técnica, pero la topología definitiva aún no está aprobada. |
 
 ## Flujo confirmado y transición prevista
@@ -28,14 +28,14 @@ flowchart LR
     U["Usuario"] --> F["Frontend React"]
     F -->|"POST /api/contenido<br/>titulo + descripcion"| B["Backend Spring Boot"]
     B -->|"Estado temporal:<br/>POST /analizar<br/>contenido_crudo"| T["Mock de inferencia"]
-    B -.->|"Propuesta pendiente de Data:<br/>POST /predict<br/>contenido_crudo"| I["FastAPI real"]
+    B -.->|"Baseline FastAPI real:<br/>POST /predict<br/>contenido_crudo"| I["FastAPI real"]
     I --> M["Pipeline y modelo"]
     B --> D[("PostgreSQL")]
     B --> R["Respuesta al Frontend"]
 ```
 
 El mock no fija el contrato definitivo de FastAPI. Su función es sostener el
-avance actual de Backend y será reemplazado cuando Data valide el servicio real.
+avance actual de Backend y será reemplazado al integrar el servicio real.
 
 ## Responsabilidades de los componentes
 
@@ -44,8 +44,8 @@ avance actual de Backend y será reemplazado cuando Data valide el servicio real
 | Frontend | Capturar `titulo` y `descripcion`, consumir Spring Boot y mostrar estados y resultados. |
 | Spring Boot | Exponer la API pública, validar, orquestar la inferencia y gestionar la persistencia. |
 | Mock temporal | Simular la respuesta de inferencia durante la etapa actual; no representa el contrato final. |
-| FastAPI | Encapsular el pipeline de inferencia y exponer el contrato que Data y Backend validen. |
-| Data | Definir y preparar los datos y el modelo; validar o ajustar el contrato real de FastAPI. |
+| FastAPI | Encapsular el pipeline de inferencia e implementar el contrato base versionado. |
+| Data | Definir y preparar los datos y el modelo e implementar la inferencia; cualquier cambio incompatible se coordina con Backend. |
 | PostgreSQL | Mantener la persistencia gestionada por Backend según su planificación. |
 | DevOps | Preparar integración, ejecución reproducible, CI/CD, seguridad y despliegue en OCI. |
 | Tech Lead | Mantener la planificación transversal y resolver o confirmar decisiones de alcance y arquitectura. |
@@ -108,19 +108,20 @@ La transformación de `titulo` y `descripcion` a `contenido_crudo` pertenece a
 la implementación actual de Backend. No obliga a Data a conservar internamente
 la forma del mock.
 
-### Spring Boot → FastAPI real — propuesta pendiente de Data
+### Spring Boot → FastAPI real — baseline confirmado
 
-El borrador de OpenAPI en `contracts/inference-api.yaml` documenta únicamente
-la propuesta compartida:
+El OpenAPI en `contracts/inference-api.yaml` documenta el baseline funcional
+vigente:
 
 - `POST /predict`;
 - entrada: `contenido_crudo`;
 - respuesta: `categoria`, `probabilidad` y `palabras_clave`.
 
-No se consideran aprobados todavía el endpoint, el esquema, los límites de
-campos, el idioma, la taxonomía, el dataset, los errores, el healthcheck, la
-trazabilidad ni la versión del modelo. Data puede validar o ajustar la propuesta
-y Backend deberá revisar el resultado antes de implementarlo como contrato real.
+Siguen pendientes los límites de campos, el idioma, la taxonomía, el dataset,
+los errores, el healthcheck, la trazabilidad y la versión del modelo. Estos
+detalles deben completarse antes de sustituir el mock, pero no bloquean aportes
+que respeten el contrato base. Cualquier cambio incompatible requiere acuerdo
+explícito entre Data y Backend.
 
 ## Recomendaciones DevOps no aprobadas
 
@@ -152,8 +153,8 @@ arquitectura de CPU, servicios, puertos, costos y estrategia de recuperación.
 
 ## Próximas validaciones
 
-1. Data define idioma y dataset.
-2. Data valida o ajusta `/predict` y sus esquemas.
-3. Backend confirma la compatibilidad del contrato resultante.
-4. El documento OpenAPI deja de ser borrador solo después de esas validaciones.
+1. Data define idioma, dataset y taxonomía.
+2. Data implementa `/predict` respetando el contrato base.
+3. Backend sustituye el mock y verifica la integración real.
+4. Data y Backend completan errores, límites, healthcheck y versionado.
 5. DevOps presenta la topología concreta de OCI como una decisión separada.

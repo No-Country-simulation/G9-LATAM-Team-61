@@ -2,14 +2,14 @@
 
 - Estado: Aceptada parcialmente
 - Fecha inicial: 2026-07-22
-- Última actualización: 2026-07-23
+- Última actualización: 2026-07-28
 - Responsables de decisión: Tech Lead y áreas involucradas en cada contrato
 
 ## Contexto
 
 TechMind distribuye el trabajo entre React, Spring Boot, FastAPI, Data,
 PostgreSQL y OCI. El equipo necesita documentar esa integración sin presentar
-como definitivas las decisiones que Data, Backend o DevOps aún deben validar.
+como definitivas las decisiones operativas que todavía no se han cerrado.
 
 La planificación por sprints definida por el Tech Lead continúa vigente. Esta
 ADR no sustituye esa planificación ni cambia el alcance asignado a cada área.
@@ -22,8 +22,8 @@ ADR no sustituye esa planificación ni cambia el alcance asignado a cada área.
 - El contrato confirmado Frontend → Spring Boot es `POST /api/contenido`, con
   `titulo` y `descripcion`.
 - Spring Boot concentra la API pública, la orquestación y la persistencia.
-- FastAPI concentra la inferencia del modelo una vez que su contrato real sea
-  validado.
+- FastAPI concentra la inferencia del modelo mediante el contrato base
+  versionado.
 - PostgreSQL es gestionado por Backend y no es consumido directamente por
   Frontend.
 - El trabajo se integra mediante ramas cortas y pull requests revisados.
@@ -40,21 +40,20 @@ El mock:
 - debe poder reemplazarse durante la integración real;
 - no convierte sus decisiones internas en obligaciones para Data.
 
-## Propuesta pendiente de validación por Data
+## Baseline confirmado para FastAPI real
 
-Como punto de partida para Spring Boot → FastAPI real se propuso:
+La planificación vigente establece para Spring Boot → FastAPI real:
 
 - `POST /predict`;
 - solicitud con `contenido_crudo`;
 - respuesta con `categoria`, `probabilidad` y `palabras_clave`.
 
-El archivo `contracts/inference-api.yaml` permanece en estado borrador. Data
-definirá idioma y dataset y validará o ajustará esta propuesta antes del meet
-del lunes. Backend revisará posteriormente su compatibilidad.
+El archivo `contracts/inference-api.yaml` registra este baseline. Data debe
+implementarlo y Backend debe consumirlo. Un cambio incompatible requiere acuerdo
+explícito y actualización del contrato.
 
 No están aprobados aún:
 
-- la forma definitiva del endpoint o los esquemas;
 - la taxonomía y los límites de campos;
 - errores, healthcheck y timeouts;
 - identificadores de trazabilidad;
@@ -79,14 +78,14 @@ son recomendaciones, no acuerdos:
 
 - Conserva la planificación y la distribución tecnológica del equipo.
 - Permite continuar Backend con un mock explícitamente temporal.
-- Evita implementar un contrato de inferencia que Data todavía no validó.
+- Permite que Data y Backend trabajen en paralelo sobre un contrato común.
 - Hace visible qué decisiones puede preparar DevOps sin confundirlas con
   acuerdos del equipo.
 
 ### Costos y riesgos
 
-- La integración real no puede cerrarse hasta validar el contrato con Data.
-- Backend deberá reemplazar el mock y quizá adaptar DTOs.
+- La integración real no puede cerrarse hasta implementar y probar el contrato.
+- Backend deberá reemplazar el mock por el servicio real.
 - Los documentos y ejemplos deben actualizarse cuando cambie una decisión.
 - Varios servicios implican más puntos de fallo y operación.
 
@@ -103,7 +102,7 @@ prioridad corresponde al Tech Lead y al equipo.
 
 La ADR podrá pasar a estado `Aceptada` cuando:
 
-1. Data confirme idioma, dataset y contrato real de FastAPI.
-2. Backend valide el contrato resultante.
-3. DevOps documente la topología elegida para OCI.
-4. El Tech Lead confirme los puntos transversales que hayan cambiado.
+1. Data defina idioma, dataset y taxonomía.
+2. Data y Backend implementen y prueben el contrato base.
+3. Data y Backend completen errores, límites, healthcheck y versionado.
+4. DevOps documente la topología elegida para OCI.
