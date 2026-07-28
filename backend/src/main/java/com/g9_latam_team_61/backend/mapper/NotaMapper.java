@@ -18,6 +18,7 @@ public class NotaMapper {
     public Nota toEntity(NotaRequest request, MlResult mlResult) {
         Nota nota = new Nota();
         nota.setTitulo(request.titulo());
+        nota.setContenidoOriginal(request.descripcion());
         nota.setCategoria(mlResult.categoria());
         nota.setProbabilidad(mlResult.probabilidad());
         nota.setPalabrasClave(mlResult.palabrasClave());

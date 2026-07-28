@@ -22,6 +22,9 @@ public class Nota {
     @Column(length = 500)
     private String titulo;
 
+    @Column(name = "contenido_original", columnDefinition = "TEXT", nullable = false)
+    private String contenidoOriginal;
+
     @Column(nullable = false, length = 100)
     private String categoria;
 
