@@ -77,7 +77,7 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
           onClick={onOpenClusters}
         >
           <span style={{ color: 'var(--brand-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
-            Ver los {clusters.length} grupos completos...
+            Ver los grupos completos
           </span>
         </div>
       </Card>
