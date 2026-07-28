@@ -1,4 +1,4 @@
-// Service layer for KMS Inference API & Mock Data
+// Service layer for KMS Inference API & Mock Datasets
 
 export const INITIAL_DOCUMENTS = [
   { id: 1, title: 'Manejo de errores JWT', category: 'Backend', badgeClass: 'backend', tags: 'spring, auth, token', date: 'Hoy, 14:30' },
@@ -7,6 +7,17 @@ export const INITIAL_DOCUMENTS = [
   { id: 4, title: 'Estructura de BD PostgreSQL', category: 'Backend', badgeClass: 'backend', tags: 'sql, schema', date: 'Ayer, 11:20' },
   { id: 5, title: 'CI/CD Actions YAML', category: 'DevOps', badgeClass: 'devops', tags: 'github, deploy', date: '17 Jul, 09:10' },
   { id: 6, title: 'Optimización de Vite.js', category: 'Frontend', badgeClass: 'frontend', tags: 'vite, build', date: '16 Jul, 16:05' }
+];
+
+export const INITIAL_CLUSTERS = [
+  { id: 0, title: 'Grupo 0: Fallos Red y OCI', docsCount: 124, tags: 'oci, subnet, dns' },
+  { id: 1, title: 'Grupo 1: Seguridad & JWT', docsCount: 89, tags: 'auth, token, bearer' },
+  { id: 2, title: 'Grupo 2: React State & Hooks', docsCount: 142, tags: 'react, useeffect, props' },
+  { id: 3, title: 'Grupo 3: Docker & Pipelines', docsCount: 98, tags: 'docker, compose, yaml' },
+  { id: 4, title: 'Grupo 4: Spring Data JPA', docsCount: 110, tags: 'entity, repository, postgres' },
+  { id: 5, title: 'Grupo 5: Python & FastAPI', docsCount: 76, tags: 'uvicorn, pydantic, joblib' },
+  { id: 6, title: 'Grupo 6: ML & Scikit-Learn', docsCount: 65, tags: 'vectorizer, kmeans, score' },
+  { id: 7, title: 'Grupo 7: Nginx & SSL', docsCount: 50, tags: 'certbot, proxy, port' }
 ];
 
 export function inferTitleFromContent(text) {

@@ -6,15 +6,24 @@ import ResultModal from './components/classification/ResultModal';
 import AnalyticsSearch from './components/dashboard/AnalyticsSearch';
 import RecentTable from './components/dashboard/RecentTable';
 import HistoryModal from './components/dashboard/HistoryModal';
+import ClusterWidget from './components/clustering/ClusterWidget';
+import ClustersModal from './components/clustering/ClustersModal';
+import UploadModal from './components/bulk/UploadModal';
+import ConfigModal from './components/modals/ConfigModal';
+import ApiDocsModal from './components/modals/ApiDocsModal';
 
-import { classifyContent, INITIAL_DOCUMENTS } from './services/kmsApi';
+import { classifyContent, INITIAL_DOCUMENTS, INITIAL_CLUSTERS } from './services/kmsApi';
 import './App.css';
 
 export function App() {
   const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
+  const [clusters] = useState(INITIAL_CLUSTERS);
   const [totalCount, setTotalCount] = useState(1204);
   const [searchQuery, setSearchQuery] = useState('');
+
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isReclustering, setIsReclustering] = useState(false);
+
   const [activeModal, setActiveModal] = useState(null);
   const [resultData, setResultData] = useState(null);
 
@@ -54,7 +63,6 @@ export function App() {
       const result = await classifyContent(formData);
       setIsProcessing(false);
       
-      // Add new document to top of list & increment total count
       setDocuments((prev) => [result, ...prev]);
       setTotalCount((prev) => prev + 1);
       setResultData(result);
@@ -66,23 +74,42 @@ export function App() {
     }
   };
 
+  const handleRecluster = () => {
+    setIsReclustering(true);
+    setTimeout(() => {
+      setIsReclustering(false);
+      showToast('Algoritmo K-Means re-ejecutado. 8 Clusters actualizados.', 'success');
+    }, 1200);
+  };
+
+  const handleProcessBatch = (count = 2000) => {
+    showToast(`Lote de ${count.toLocaleString()} registros enviado a FastAPI. Procesando en segundo plano...`, 'success');
+    setTimeout(() => {
+      setTotalCount((prev) => prev + count);
+    }, 1000);
+  };
+
+  const handleSaveConfig = () => {
+    showToast('Configuraciones guardadas correctamente', 'success');
+  };
+
   return (
     <div className="main-content-wrapper" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
       {/* Toast Notification Banner */}
       <Toast toastState={toastState} />
 
       <main className="main-content">
-        {/* Top Bar Header (Fase 1) */}
+        {/* Top Bar Header (Fase 1 + Fase 5 modal triggers) */}
         <Header
-          onOpenConfig={() => showToast('Modal de Configuración (Disponible en Fase 5)')}
-          onOpenApiDocs={() => showToast('Modal de Docs API (Disponible en Fase 5)')}
+          onOpenConfig={() => setActiveModal('config')}
+          onOpenApiDocs={() => setActiveModal('api')}
         />
 
         {/* FILA 1: Top Grid completo (Fases 2 y 3) */}
         <div className="top-grid">
           <DataInputForm
             onClassify={handleClassify}
-            onOpenUpload={() => showToast('Modal Carga CSV (Disponible en Fase 5)')}
+            onOpenUpload={() => setActiveModal('upload')}
             isProcessing={isProcessing}
           />
 
@@ -93,7 +120,7 @@ export function App() {
           />
         </div>
 
-        {/* FILA 2: Bottom Grid */}
+        {/* FILA 2: Bottom Grid completo (Fases 4 y 5) */}
         <section id="sec-resultados" className="bottom-grid">
           {/* Columna Izquierda: Tabla de Últimos Procesados (Fase 4) */}
           <RecentTable
@@ -102,25 +129,50 @@ export function App() {
             onOpenHistory={() => setActiveModal('history')}
           />
 
-          {/* Columna Derecha: Ranura para Explorador de Clusters (Fase 5) */}
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px', opacity: 0.7, borderStyle: 'dashed' }}>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>[Fase 5: Explorador de Clusters K-Means & Modales]</p>
-          </div>
+          {/* Columna Derecha: Explorador de Clusters K-Means (Fase 5) */}
+          <ClusterWidget
+            clusters={clusters}
+            isReclustering={isReclustering}
+            onRecluster={handleRecluster}
+            onOpenClusters={() => setActiveModal('clusters')}
+          />
         </section>
       </main>
 
-      {/* Modal de Resultado de Clasificación (Fase 2) */}
+      {/* Modals de la Aplicación */}
       <ResultModal
         isOpen={activeModal === 'result'}
         onClose={() => setActiveModal(null)}
         resultData={resultData}
       />
 
-      {/* Modal de Historial Completo Paginado (Fase 4) */}
       <HistoryModal
         isOpen={activeModal === 'history'}
         onClose={() => setActiveModal(null)}
         documents={documents}
+      />
+
+      <ClustersModal
+        isOpen={activeModal === 'clusters'}
+        onClose={() => setActiveModal(null)}
+        clusters={clusters}
+      />
+
+      <UploadModal
+        isOpen={activeModal === 'upload'}
+        onClose={() => setActiveModal(null)}
+        onProcessBatch={handleProcessBatch}
+      />
+
+      <ConfigModal
+        isOpen={activeModal === 'config'}
+        onClose={() => setActiveModal(null)}
+        onSaveConfig={handleSaveConfig}
+      />
+
+      <ApiDocsModal
+        isOpen={activeModal === 'api'}
+        onClose={() => setActiveModal(null)}
       />
     </div>
   );
