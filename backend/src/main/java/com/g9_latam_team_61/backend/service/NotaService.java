@@ -9,7 +9,6 @@ import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.model.Nota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +18,6 @@ public class NotaService {
     private final MlClient mlClient;
     private final NotaMapper notaMapper;
 
-    @Transactional
     public NotaResponse procesar(NotaRequest request){
         String contenido = notaMapper.construirContenido(request);
         MlResult mlResult = mlClient.analizar(contenido);

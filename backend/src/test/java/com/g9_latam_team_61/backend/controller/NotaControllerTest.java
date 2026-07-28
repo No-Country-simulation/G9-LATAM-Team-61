@@ -1,5 +1,7 @@
 package com.g9_latam_team_61.backend.controller;
 
+import com.g9_latam_team_61.backend.client.MlServiceException;
+import com.g9_latam_team_61.backend.client.MlServiceTimeoutException;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.service.NotaService;
@@ -56,5 +58,45 @@ class NotaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonMapper.writeValueAsString(invalido)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void analizar_debeRetornar502_cuandoServicioMlFalla() throws Exception {
+        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        when(notaService.procesar(any(NotaRequest.class)))
+                .thenThrow(new MlServiceException("El servicio de análisis devolvió un error: 500 INTERNAL_SERVER_ERROR"));
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.status").value(502));
+    }
+
+    @Test
+    void analizar_debeRetornar504_cuandoServicioMlEsperaTimeout() throws Exception {
+        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        when(notaService.procesar(any(NotaRequest.class)))
+                .thenThrow(new MlServiceTimeoutException("El servicio de análisis no respondió a tiempo"));
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.status").value(504));
+    }
+
+    @Test
+    void analizar_debeRetornar500_cuandoOcurreExcepcionInesperada() throws Exception {
+        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        when(notaService.procesar(any(NotaRequest.class)))
+                .thenThrow(new RuntimeException("Error inesperado en BD"));
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Ha ocurrido un error interno en el servidor"));
     }
 }

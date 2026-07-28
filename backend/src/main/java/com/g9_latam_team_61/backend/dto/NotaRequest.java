@@ -8,8 +8,8 @@ public record NotaRequest(
         @Size(max = 500, message = "El título no puede exceder 500 caracteres")
         String titulo,
 
-        @NotBlank(message = "La descripcion es obligatorio")
-        @Size(min = 10, message = "La descripcion debe tener al menos 10 caracteres")
+        @NotBlank(message = "La descripcion es obligatoria")
+        @Size(min = 10, max = 10000, message = "La descripcion debe tener entre 10 y 10000 caracteres")
         String descripcion
 ) {
 }
