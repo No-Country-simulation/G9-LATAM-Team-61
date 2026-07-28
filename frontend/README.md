@@ -59,7 +59,7 @@ Front Hackathon/
 - [x] **Fase 1**: Setup Base, Tokens CSS y Contenedor Layout Shell.
 - [x] **Fase 2**: Módulo de Ingreso de Datos y Modal de Inferencia MVP (`POST /api/contenido`).
 - [x] **Fase 3**: Módulo de Analítica y Búsqueda Semántica.
-- [ ] **Fase 4**: Tabla de Últimos Procesados e Historial Paginado.
+- [x] **Fase 4**: Tabla de Últimos Procesados e Historial Paginado.
 - [ ] **Fase 5**: Explorador de Clusters K-Means (`POST /agrupar`), Carga Masiva CSV (`POST /lote`), Configuración y API Docs.
 - [ ] **Fase 6**: Conexión REST HTTP en Vivo con Backend Spring Boot / FastAPI y QA final.
 

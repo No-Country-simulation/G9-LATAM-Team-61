@@ -4,11 +4,14 @@ import Toast from './components/common/Toast';
 import DataInputForm from './components/classification/DataInputForm';
 import ResultModal from './components/classification/ResultModal';
 import AnalyticsSearch from './components/dashboard/AnalyticsSearch';
+import RecentTable from './components/dashboard/RecentTable';
+import HistoryModal from './components/dashboard/HistoryModal';
 
-import { classifyContent } from './services/kmsApi';
+import { classifyContent, INITIAL_DOCUMENTS } from './services/kmsApi';
 import './App.css';
 
 export function App() {
+  const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
   const [totalCount, setTotalCount] = useState(1204);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,6 +53,9 @@ export function App() {
     try {
       const result = await classifyContent(formData);
       setIsProcessing(false);
+      
+      // Add new document to top of list & increment total count
+      setDocuments((prev) => [result, ...prev]);
       setTotalCount((prev) => prev + 1);
       setResultData(result);
       setActiveModal('result');
@@ -72,16 +78,14 @@ export function App() {
           onOpenApiDocs={() => showToast('Modal de Docs API (Disponible en Fase 5)')}
         />
 
-        {/* FILA 1: Top Grid completo (Fase 2 + Fase 3) */}
+        {/* FILA 1: Top Grid completo (Fases 2 y 3) */}
         <div className="top-grid">
-          {/* Columna Izquierda: Formulario de Clasificación (Fase 2) */}
           <DataInputForm
             onClassify={handleClassify}
             onOpenUpload={() => showToast('Modal Carga CSV (Disponible en Fase 5)')}
             isProcessing={isProcessing}
           />
 
-          {/* Columna Derecha: Módulo de Analítica y Búsqueda Semántica (Fase 3) */}
           <AnalyticsSearch
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -89,13 +93,18 @@ export function App() {
           />
         </div>
 
-        {/* FILA 2: Bottom Grid (Fases 4 y 5) */}
+        {/* FILA 2: Bottom Grid */}
         <section id="sec-resultados" className="bottom-grid">
+          {/* Columna Izquierda: Tabla de Últimos Procesados (Fase 4) */}
+          <RecentTable
+            documents={documents}
+            searchQuery={searchQuery}
+            onOpenHistory={() => setActiveModal('history')}
+          />
+
+          {/* Columna Derecha: Ranura para Explorador de Clusters (Fase 5) */}
           <div className="card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px', opacity: 0.7, borderStyle: 'dashed' }}>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>[Fase 4: Tabla de Últimos Procesados e Historial Paginado]</p>
-          </div>
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px', opacity: 0.7, borderStyle: 'dashed' }}>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>[Fase 5: Explorador de Clusters K-Means]</p>
+            <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>[Fase 5: Explorador de Clusters K-Means & Modales]</p>
           </div>
         </section>
       </main>
@@ -105,6 +114,13 @@ export function App() {
         isOpen={activeModal === 'result'}
         onClose={() => setActiveModal(null)}
         resultData={resultData}
+      />
+
+      {/* Modal de Historial Completo Paginado (Fase 4) */}
+      <HistoryModal
+        isOpen={activeModal === 'history'}
+        onClose={() => setActiveModal(null)}
+        documents={documents}
       />
     </div>
   );
