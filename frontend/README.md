@@ -4,7 +4,7 @@ Plataforma Web interactiva para la organización, clasificación temática y exp
 
 ---
 
-## 🚀 Descripción del Proyecto
+## Descripción del Proyecto
 
 El sistema permite a profesionales y estudiantes de tecnología transformar grandes volúmenes de documentación desestructurada en una base de conocimiento organizada automáticamente.
 
@@ -18,7 +18,7 @@ El sistema permite a profesionales y estudiantes de tecnología transformar gran
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 | Capa | Tecnología | Descripción |
 |------|-----------|-------------|
@@ -30,7 +30,7 @@ El sistema permite a profesionales y estudiantes de tecnología transformar gran
 
 ---
 
-## 📁 Estructura del Repositorio
+## Estructura del Repositorio
 
 ```text
 Front Hackathon/
@@ -54,49 +54,12 @@ Front Hackathon/
 
 ---
 
-## 📑 Roadmap de Implementación Aditiva (6 Fases)
+## Roadmap de Implementación Aditiva (6 Fases)
 
 - [x] **Fase 1**: Setup Base, Tokens CSS y Contenedor Layout Shell.
-- [ ] **Fase 2**: Módulo de Ingreso de Datos y Modal de Inferencia MVP (`POST /api/v1/contenido`).
+- [ ] **Fase 2**: Módulo de Ingreso de Datos y Modal de Inferencia MVP (`POST /api/contenido`).
 - [ ] **Fase 3**: Módulo de Analítica y Búsqueda Semántica.
 - [ ] **Fase 4**: Tabla de Últimos Procesados e Historial Paginado.
 - [ ] **Fase 5**: Explorador de Clusters K-Means (`POST /agrupar`), Carga Masiva CSV (`POST /lote`), Configuración y API Docs.
 - [ ] **Fase 6**: Conexión REST HTTP en Vivo con Backend Spring Boot / FastAPI y QA final.
 
----
-
-## 💻 Instrucciones para Ejecución Local
-
-### Prerrequisitos
-- **Node.js**: v18.0.0 o superior
-- **npm**: v9.0.0 o superior
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio**:
-   ```bash
-   git clone <URL_DEL_REPOSITO>
-   cd "Front Hackathon"
-   ```
-
-2. **Instalar dependencias**:
-   ```bash
-   npm install
-   ```
-
-3. **Ejecutar servidor de desarrollo**:
-   ```bash
-   npm run dev
-   ```
-   Acceder a `http://localhost:5173/` en el navegador.
-
-4. **Compilar para producción**:
-   ```bash
-   npm run build
-   ```
-
----
-
-## 📄 Licencia
-
-Proyecto desarrollado por el Equipo 61 — **Hackathon ONE G9 (Alura & Oracle LATAM)**.
