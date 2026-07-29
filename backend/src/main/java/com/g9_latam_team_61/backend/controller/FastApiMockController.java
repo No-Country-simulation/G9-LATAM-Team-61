@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Profile({"local", "mock", "test"})
+@Profile({"local", "test"})
 @RestController
 @RequestMapping("/analizar")
 public class FastApiMockController {
