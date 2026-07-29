@@ -33,6 +33,8 @@ export function App() {
   const [activeModal, setActiveModal] = useState(null);
   const [resultData, setResultData] = useState(null);
 
+  const toastTimerRef = React.useRef(null);
+
   const [toastState, setToastState] = useState({
     visible: false,
     message: '',
@@ -60,10 +62,20 @@ export function App() {
   }, [activeModal]);
 
   const showToast = (message, type = 'info') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToastState({ visible: true, message, type });
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToastState((prev) => ({ ...prev, visible: false }));
-    }, 3000);
+    }, 3500);
+  };
+
+  const handleCloseToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastState((prev) => ({ ...prev, visible: false }));
   };
 
   const handleClassify = async (formData) => {
@@ -116,7 +128,7 @@ export function App() {
   return (
     <div className="main-content-wrapper" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
       {/* Toast Notification Banner */}
-      <Toast toastState={toastState} />
+      <Toast toastState={toastState} onClose={handleCloseToast} />
 
       <main className="main-content">
         {/* Top Bar Header (Fase 1 + Fase 6 Status) */}

@@ -64,11 +64,17 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
   const contentText = (content || '').trim();
   const docTitle = (title || '').trim() || inferTitleFromContent(contentText);
 
+  const sanitizedContent = contentText.slice(0, 10000);
+
   try {
     const response = await fetch(`${apiUrl}/contenido`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: docTitle, texto: contentText }),
+      body: JSON.stringify({
+        titulo: docTitle,
+        descripcion: sanitizedContent,
+        texto: sanitizedContent,
+      }),
     });
 
     if (response.ok) {
