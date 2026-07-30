@@ -1,0 +1,48 @@
+# Maven Target & Build Outputs
+target/
+*.jar
+*.war
+*.ear
+*.rar
+
+# Maven Wrapper Executables
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot Environment & Properties
+.env
+
+# Logs
+*.log
+logs/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
