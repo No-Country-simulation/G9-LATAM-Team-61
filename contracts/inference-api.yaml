@@ -1,0 +1,70 @@
+openapi: 3.1.0
+info:
+  title: Contrato base de API interna de inferencia de TechMind
+  version: 0.3.0-baseline
+  description: >-
+    Baseline funcional vigente para la integración entre Spring Boot y FastAPI,
+    derivado de la planificación por sprints del Tech Lead. Los detalles
+    operativos pendientes se acordarán sin bloquear la implementación inicial.
+x-estado: baseline-vigente
+paths:
+  /predict:
+    post:
+      operationId: predecirContenido
+      summary: Clasifica un contenido técnico individual
+      description: >-
+        Contrato base que deben implementar Data y Backend. Los cambios
+        incompatibles requieren un acuerdo explícito y una actualización de
+        este documento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitudPrediccion'
+            examples:
+              baseline:
+                externalValue: './examples/inference-request.json'
+      responses:
+        '200':
+          description: Predicción completada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaPrediccion'
+              examples:
+                baseline:
+                  externalValue: './examples/inference-response.json'
+components:
+  schemas:
+    SolicitudPrediccion:
+      type: object
+      additionalProperties: false
+      required:
+        - contenido_crudo
+      properties:
+        contenido_crudo:
+          type: string
+          description: Texto compuesto que Spring Boot envía al servicio real
+    RespuestaPrediccion:
+      type: object
+      additionalProperties: false
+      required:
+        - categoria
+        - probabilidad
+        - palabras_clave
+      properties:
+        categoria:
+          type: string
+          description: Categoría predicha; la taxonomía está pendiente de Data
+        probabilidad:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Confianza o probabilidad devuelta por el modelo
+        palabras_clave:
+          type: array
+          items:
+            type: string
+          description: Palabras clave extraídas por el pipeline

@@ -1,0 +1,17 @@
+meta {
+  name: Analizar Nota Mock Directo
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8080/analizar
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "contenido_crudo": "Documentación de Servidores. Configuración de balanceadores de carga en OCI usando Docker."
+  }
+}

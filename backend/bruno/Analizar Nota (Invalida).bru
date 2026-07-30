@@ -1,0 +1,18 @@
+meta {
+  name: Analizar Nota (Invalida)
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8080/api/contenido
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "titulo": "Test",
+    "descripcion": "Corto"
+  }
+}

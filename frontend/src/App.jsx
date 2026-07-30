@@ -100,7 +100,7 @@ export function App() {
       } else {
         showToast('¡Documento clasificado e indexado (Modo Demo)!', 'success');
       }
-    } catch (error) {
+    } catch {
       setIsProcessing(false);
       showToast('Error en el servicio de clasificación de contenido', 'error');
     }

@@ -43,16 +43,18 @@ export function inferTitleFromContent(text) {
 }
 
 /**
- * Endpoint 1: Health Check Ping (GET /api/health)
+ * Endpoint 1: Health Check Ping
  */
 export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const response = await fetch(`${apiUrl}/health`, { signal: controller.signal });
+    // Spring Boot provides /v3/api-docs for OpenAPI
+    const rootUrl = apiUrl.replace(/\/api\/?$/, '');
+    const response = await fetch(`${rootUrl}/v3/api-docs`, { signal: controller.signal });
     clearTimeout(timeoutId);
     return response.ok;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -73,7 +75,6 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
       body: JSON.stringify({
         titulo: docTitle,
         descripcion: sanitizedContent,
-        texto: sanitizedContent,
       }),
     });
 
@@ -82,18 +83,27 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
       const category = data.categoria || 'Backend';
       const badgeClass = category.toLowerCase().replace(/\s+/g, '');
       const confidence = data.probabilidad ? `${(data.probabilidad * 100).toFixed(1)}%` : '94.5%';
-      const tags = Array.isArray(data.informacion_adicional)
-        ? data.informacion_adicional.join(', ')
+      
+      const rawTags = data.palabrasClave || data.palabras_clave || data.informacion_adicional;
+      const tags = Array.isArray(rawTags)
+        ? rawTags.join(', ')
         : 'java, spring, rest';
 
+      let formattedDate = 'Hace un momento';
+      if (data.fechaAnalisis) {
+        try {
+          formattedDate = new Date(data.fechaAnalisis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {}
+      }
+
       return {
-        id: data.id_registro || Date.now(),
-        title: docTitle,
+        id: data.id || data.id_registro || Date.now(),
+        title: data.titulo || docTitle,
         category,
         badgeClass,
         confidence,
         tags,
-        date: 'Hace un momento',
+        date: formattedDate,
         isLiveApi: true,
       };
     }
