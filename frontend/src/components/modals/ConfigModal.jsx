@@ -100,14 +100,14 @@ export function ConfigModal({ isOpen, onClose, onSaveConfig }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="input-apiurl">Servicio FastAPI (Backend IA)</label>
+          <label htmlFor="input-apiurl">Servidor Backend (Spring Boot API Gateway)</label>
           <input
             id="input-apiurl"
             type="text"
             className="form-control"
-            value="http://fastapi-inference:8000"
+            value="http://localhost:8080/api"
             disabled
-            style={{ opacity: 0.6, marginTop: '0.5rem', marginBottom: 0 }}
+            style={{ opacity: 0.8, marginTop: '0.5rem', marginBottom: 0 }}
           />
         </div>
 

@@ -53,11 +53,11 @@ Front Hackathon/
 
 ---
 
-## Roadmap de Implementación Aditiva (6 Fases)
+## Roadmap de Estado del Sistema (Integración Real vs Componentes Demo)
 
-- [x] **Fase 1**: Setup Base, Tokens CSS y Contenedor Layout Shell.
-- [x] **Fase 2**: Módulo de Ingreso de Datos y Modal de Inferencia MVP (`POST /api/contenido`).
-- [x] **Fase 3**: Módulo de Analítica y Búsqueda Semántica.
-- [x] **Fase 4**: Tabla de Últimos Procesados e Historial Paginado.
-- [x] **Fase 5**: Explorador de Clusters K-Means (`POST /agrupar`), Carga Masiva CSV (`POST /lote`), Configuración y API Docs.
-- [x] **Fase 6**: Conexión REST HTTP en Vivo con Backend Spring Boot / FastAPI y QA final.
+- [x] **Integración HTTP en Vivo (Spring Boot)**: Módulo de Clasificación (`POST /api/contenido`) con validación de contrato DTO (`titulo`, `descripcion`), sanitización y manejo transparente de errores HTTP.
+- [x] **Fases 1 a 2 UI**: Layout Shell, Tokens CSS de diseño visual, Módulo de Ingreso de Datos e Inferencia.
+- [x] **Fases 3 a 5 UI (Modo Demo / Próximamente)**: Componentes visuales preparados para futuros desarrollos del backend:
+  - Búsqueda y Analítica *(Filtro textual local / Métricas Demo)*
+  - Historial y Paginación *(Visualización de registros locales)*
+  - Clusters K-Means y Carga Masiva CSV *(Simulación demostrativa)*

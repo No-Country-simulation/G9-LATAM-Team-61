@@ -1,7 +1,10 @@
 // KMS API Client Service (Separación estricta Modo Real vs Modo Demo + Manejo Transparente de Errores)
 
 export const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-export const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCK === 'true';
+
+// El modo demo solo se activa si se especifica explícitamente en desarrollo (VITE_ENABLE_DEMO=true)
+export const IS_MOCK_MODE =
+  import.meta.env.VITE_ENABLE_DEMO === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
 
 export const INITIAL_DOCUMENTS = [
   { id: 1, title: 'Manejo de errores JWT', category: 'Backend', badgeClass: 'backend', tags: 'spring, auth, token', date: 'Hoy, 14:30' },
@@ -47,7 +50,7 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
   if (IS_MOCK_MODE) return false;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     const response = await fetch(`${apiUrl}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     return response.ok;
@@ -60,21 +63,28 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
  * Single Text Classification (POST /api/contenido)
  * Modos aislados: Modo Real (Lanza errores explícitos) vs Modo Demo (Inferencia Local Simula)
  */
-export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL) {
+export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL, forceDemoMode = IS_MOCK_MODE) {
   const contentText = (content || '').trim();
+  
+  if (contentText.length < 10) {
+    throw new Error('El contenido debe tener al menos 10 caracteres.');
+  }
+
   if (contentText.length > 10000) {
     throw new Error('El contenido excede el límite máximo permitido de 10,000 caracteres.');
   }
 
-  const docTitle = (title || '').trim() || inferTitleFromContent(contentText);
+  const docTitle = (title || '').trim().slice(0, 500) || inferTitleFromContent(contentText);
 
-  // Si está activado explícitamente el Modo Demo Local
-  if (IS_MOCK_MODE) {
+  // Si se habilita explícitamente el Modo Demo
+  if (forceDemoMode) {
     return executeLocalMockClassification(docTitle, contentText);
   }
 
-  // MODO REAL: Petición HTTP a Spring Boot
+  // MODO REAL: Petición HTTP a Spring Boot con Timeout de 10 segundos
   const sanitizedContent = contentText.slice(0, 10000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   let response;
   try {
@@ -86,8 +96,14 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
         descripcion: sanitizedContent,
         texto: sanitizedContent,
       }),
+      signal: controller.signal,
     });
-  } catch {
+    clearTimeout(timeoutId);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('HTTP Timeout (10s): La solicitud de inferencia excedió el tiempo límite.');
+    }
     throw new Error('Error de conexión: No se pudo establecer comunicación con el servidor de Spring Boot (http://localhost:8080).');
   }
 
@@ -95,13 +111,15 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
     const data = await response.json();
     const category = data.categoria || 'Backend';
     const badgeClass = category.toLowerCase().replace(/\s+/g, '');
-    const confidence = data.probabilidad ? `${(data.probabilidad * 100).toFixed(1)}%` : '94.5%';
-    const tags = Array.isArray(data.informacion_adicional)
-      ? data.informacion_adicional.join(', ')
-      : 'java, spring, rest';
+    const rawProb = data.probabilidad !== undefined ? data.probabilidad : 0.945;
+    const confidence = `${(rawProb * 100).toFixed(1)}%`;
+    
+    // Transformación correcta de palabras claves / tags
+    const rawTags = data.palabrasClave || data.palabras_clave || data.informacion_adicional || ['java', 'spring', 'rest'];
+    const tags = Array.isArray(rawTags) ? rawTags.join(', ') : String(rawTags);
 
     return {
-      id: data.id_registro || Date.now(),
+      id: data.id_registro || data.id || Date.now(),
       title: docTitle,
       category,
       badgeClass,
@@ -114,7 +132,7 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
 
   // Manejo explícito de respuestas de error HTTP 4xx / 5xx sin ocultar fallos
   if (response.status === 400) {
-    throw new Error('HTTP 400: Solicitud incorrecta o datos inválidos según el servidor.');
+    throw new Error('HTTP 400: Error de validación según el servidor backend.');
   } else if (response.status === 502) {
     throw new Error('HTTP 502 Bad Gateway: El servidor de inferencia ML no está disponible.');
   } else if (response.status === 504) {

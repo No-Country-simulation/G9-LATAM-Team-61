@@ -5,38 +5,59 @@ import Button from '../common/Button';
 export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [charError, setCharError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
+  const MIN_CHARS = 10;
   const MAX_CHARS = 10000;
+  const MAX_TITLE_CHARS = 500;
+
+  const handleTitleChange = (e) => {
+    const val = e.target.value;
+    if (val.length <= MAX_TITLE_CHARS) {
+      setTitle(val);
+    }
+  };
 
   const handleContentChange = (e) => {
     const val = e.target.value;
     setContent(val);
-    if (val.length > MAX_CHARS) {
-      setCharError(`Excede el límite máximo de ${MAX_CHARS.toLocaleString()} caracteres (${val.length.toLocaleString()})`);
+    
+    if (val.length > 0 && val.length < MIN_CHARS) {
+      setValidationError(`El contenido debe tener al menos ${MIN_CHARS} caracteres (actual: ${val.length}).`);
+    } else if (val.length > MAX_CHARS) {
+      setValidationError(`Excede el límite máximo de ${MAX_CHARS.toLocaleString()} caracteres (${val.length.toLocaleString()}).`);
     } else {
-      setCharError('');
+      setValidationError('');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim()) {
-      onClassify(null);
+    const trimmedContent = content.trim();
+
+    if (!trimmedContent) {
+      setValidationError('Por favor ingresa el contenido a clasificar.');
       return;
     }
 
-    if (content.length > MAX_CHARS) {
-      setCharError(`No se puede enviar: Excede los ${MAX_CHARS.toLocaleString()} caracteres.`);
+    if (trimmedContent.length < MIN_CHARS) {
+      setValidationError(`El contenido debe tener al menos ${MIN_CHARS} caracteres.`);
       return;
     }
 
-    // Call onClassify and only clear text inputs if classification succeeds!
-    const success = await onClassify({ title, content });
+    if (trimmedContent.length > MAX_CHARS) {
+      setValidationError(`No se puede enviar: Excede los ${MAX_CHARS.toLocaleString()} caracteres.`);
+      return;
+    }
+
+    setValidationError('');
+
+    // Call onClassify and ONLY clear inputs if classification succeeds!
+    const success = await onClassify({ title, content: trimmedContent });
     if (success) {
       setTitle('');
       setContent('');
-      setCharError('');
+      setValidationError('');
     }
   };
 
@@ -52,21 +73,34 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
       <Card>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="doc-title">Título (Opcional)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label htmlFor="doc-title">Título (Opcional)</label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                {title.length} / {MAX_TITLE_CHARS}
+              </span>
+            </div>
             <input
               id="doc-title"
               type="text"
               className="form-control"
               placeholder="Ej: Configuración Nginx"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              maxLength={MAX_TITLE_CHARS}
+              onChange={handleTitleChange}
             />
           </div>
 
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="doc-content">Contenido Crudo *</label>
-              <span style={{ fontSize: '0.75rem', color: content.length > MAX_CHARS ? '#E11D48' : 'var(--text-secondary)' }}>
+              <label htmlFor="doc-content">Contenido Crudo (10 a 10,000 caracteres) *</label>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: content.length > 0 && (content.length < MIN_CHARS || content.length > MAX_CHARS)
+                    ? '#E11D48'
+                    : 'var(--text-secondary)',
+                }}
+              >
                 {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
               </span>
             </div>
@@ -74,16 +108,16 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
               id="doc-content"
               className="form-control"
               rows="4"
-              placeholder="Pega la documentación o logs aquí..."
+              placeholder="Pega la documentación o logs aquí (mínimo 10 caracteres)..."
               value={content}
               onChange={handleContentChange}
               style={{
-                borderColor: charError ? '#E11D48' : undefined,
+                borderColor: validationError ? '#E11D48' : undefined,
               }}
             ></textarea>
-            {charError && (
+            {validationError && (
               <span style={{ fontSize: '0.8rem', color: '#E11D48', marginTop: '0.3rem', display: 'block' }}>
-                ⚠️ {charError}
+                ⚠️ {validationError}
               </span>
             )}
           </div>
@@ -94,7 +128,7 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
               variant="primary"
               style={{ flex: 2 }}
               isLoading={isProcessing}
-              disabled={Boolean(charError)}
+              disabled={Boolean(validationError) || content.trim().length < MIN_CHARS}
             >
               <svg className="icon icon-sm" viewBox="0 0 24 24">
                 <polyline points="20 6 9 17 4 12"></polyline>
