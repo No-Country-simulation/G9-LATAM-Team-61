@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.controller;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
+import com.g9_latam_team_61.backend.dto.PaginaResponse;
 import com.g9_latam_team_61.backend.service.NotaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +31,13 @@ public class NotaController {
     }
 
     @GetMapping("/contenido")
-    public ResponseEntity<Page<NotaResponse>> historial(
+    public ResponseEntity<PaginaResponse<NotaResponse>> historial(
             @RequestParam(required = false) String categoria,
             @PageableDefault(size = 10, sort = "fechaAnalisis", direction = Sort.Direction.DESC) Pageable pageable
             ){
+
         Page<NotaResponse> response =   notaService.obtenerHistorial(categoria, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(PaginaResponse.from(response));
     }
 
     @GetMapping("/contenido/stats")

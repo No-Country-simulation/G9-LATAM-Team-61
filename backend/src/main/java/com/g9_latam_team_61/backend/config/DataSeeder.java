@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.config;
 import com.g9_latam_team_61.backend.model.Nota;
 import com.g9_latam_team_61.backend.repository.NotaRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Profile("local")
 @Component
 @RequiredArgsConstructor
@@ -32,20 +34,24 @@ public class DataSeeder implements CommandLineRunner {
                         List.of("GitHub Actions", "CI/CD"),
                         "Automatización de despliegues con GitHub Actions."),
 
-                crearNota("Optimización de Consultas SQL", "Base de Datos", 0.88,
-                        List.of("PostgreSQL", "Índices"),
-                        "Análisis de índices en PostgreSQL para mejorar rendimiento."),
+                crearNota("Guía useEffect React", "Frontend", 0.87,
+                        List.of("react", "hooks"),
+                        "Patrones de uso del hook useEffect en componentes funcionales."),
 
                 crearNota("Migración a Spring Boot 4", "Backend", 0.92,
                         List.of("Spring Boot", "Jackson"),
                         "Actualización del proyecto de Spring Boot 3.5 a la versión 4.1."),
 
-                crearNota("Autenticación JWT", "Seguridad", 0.89,
-                        List.of("JWT", "Auth"),
-                        "Implementación de autenticación JWT con refresh tokens.")
+                crearNota("Manejo de errores JWT", "Backend", 0.89,
+                        List.of("spring", "auth", "token"),
+                        "Implementación de autenticación JWT con manejo de excepciones."),
+
+                crearNota("Nota de prueba variada", "Otros", 0.75,
+                        List.of("misceláneo"),
+                        "Contenido de ejemplo que no encaja en una categoría específica.")
         ));
 
-        System.out.println(">>> Datos de prueba (seed) cargados correctamente.");
+        log.info("Datos de prueba (seed) cargados correctamente.");
     }
 
     private Nota crearNota(String titulo, String categoria, Double probabilidad,

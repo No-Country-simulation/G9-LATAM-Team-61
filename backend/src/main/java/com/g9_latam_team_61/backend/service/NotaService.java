@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class NotaService {
@@ -21,7 +23,10 @@ public class NotaService {
     private final MlClient mlClient;
     private final NotaMapper notaMapper;
 
-    public NotaResponse procesar(NotaRequest request){
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final Set<String> CAMPOS_ORDENABLES = Set.of("fechaAnalisis", "categoria", "probabilidad", "titulo");
+
+    public NotaResponse procesar(NotaRequest request) {
         String contenido = notaMapper.construirContenido(request);
         MlResult mlResult = mlClient.analizar(contenido);
 
@@ -32,8 +37,11 @@ public class NotaService {
     }
 
     public Page<NotaResponse> obtenerHistorial(String categoria, Pageable pageable) {
+
+        validarPageable(pageable);
+
         Page<Nota> notas = (categoria != null && !categoria.isBlank())
-                ? notaRepository.findByCategoria(categoria, pageable)
+                ? notaRepository.findByCategoriaIgnoreCase(categoria, pageable)
                 : notaRepository.findAll(pageable);
 
         return notas.map(notaMapper::toResponse);
@@ -41,12 +49,24 @@ public class NotaService {
 
     public EstadisticasResponse obtenerEstadisticas() {
         long total = notaRepository.count();
-        Double precisionPromedio = notaRepository.findPrecisionPromedio();
+        Double precisionPromedio = notaRepository.findConfianzaPromedio();
 
-        Double precisionRedondeada = precisionPromedio != null
+        Double confianzaRedondeada = precisionPromedio != null
                 ? Math.round(precisionPromedio * 10000.0) / 10000.0
                 : null;
 
-        return new EstadisticasResponse(total, precisionRedondeada);
+        return new EstadisticasResponse(total, confianzaRedondeada);
+    }
+
+    private void validarPageable(Pageable pageable) {
+        if (pageable.getPageSize() > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("El tamaño de página no puede exceder " + MAX_PAGE_SIZE);
+        }
+
+        boolean sortInvalido = pageable.getSort().stream()
+                .anyMatch(order -> !CAMPOS_ORDENABLES.contains(order.getProperty()));
+        if (sortInvalido) {
+            throw new IllegalArgumentException("Campo de ordenamiento no permitido");
+        }
     }
 }
