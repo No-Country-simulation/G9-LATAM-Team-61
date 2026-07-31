@@ -51,9 +51,16 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${apiUrl}/health`, { signal: controller.signal });
+    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+
+    // Intentar /api/health primero, y si no responde 200, verificar /v3/api-docs (Swagger de Spring Boot)
+    let response = await fetch(`${apiUrl}/health`, { signal: controller.signal }).catch(() => null);
+    if (!response || !response.ok) {
+      response = await fetch(`${baseUrl}/v3/api-docs`, { signal: controller.signal }).catch(() => null);
+    }
+
     clearTimeout(timeoutId);
-    return response.ok;
+    return Boolean(response && response.ok);
   } catch {
     return false;
   }
