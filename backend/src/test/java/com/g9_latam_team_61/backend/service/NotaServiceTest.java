@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.service;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
 import com.g9_latam_team_61.backend.client.MlServiceException;
+import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.mapper.NotaMapper;
@@ -13,6 +14,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -87,4 +92,45 @@ class NotaServiceTest {
 
         verify(notaRepository, never()).save(any());
     }
+
+    @Test
+    void obtenerHistorial_debeFiltrarPorCategoria() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Nota nota = new Nota();
+        nota.setCategoria("DevOps");
+        Page<Nota> notaPage = new PageImpl<>(List.of(nota));
+
+        when(notaRepository.findByCategoria("DevOps", pageable)).thenReturn(notaPage);
+        when(notaMapper.toResponse(nota)).thenReturn(
+                new NotaResponse(1L, "Titulo", "DevOps", 0.9, List.of("test"), LocalDateTime.now())
+        );
+
+        Page<NotaResponse> resultado = notaService.obtenerHistorial("DevOps", pageable);
+
+        assertEquals(1, resultado.getTotalElements());
+        verify(notaRepository).findByCategoria("DevOps", pageable);
+    }
+
+    @Test
+    void obtenerEstadisticas_debeCalcularTotalYPromedio() {
+        when(notaRepository.count()).thenReturn(5L);
+        when(notaRepository.findPrecisionPromedio()).thenReturn(0.912345);
+
+        EstadisticasResponse response = notaService.obtenerEstadisticas();
+
+        assertEquals(5L, response.totalIndexados());
+        assertEquals(0.9123, response.precisionPromedio());
+    }
+
+    @Test
+    void obtenerEstadisticas_debeManejarBaseDatosVacia() {
+        when(notaRepository.count()).thenReturn(0L);
+        when(notaRepository.findPrecisionPromedio()).thenReturn(null);
+
+        EstadisticasResponse response = notaService.obtenerEstadisticas();
+
+        assertEquals(0L, response.totalIndexados());
+        assertNull(response.precisionPromedio());
+    }
+
 }
