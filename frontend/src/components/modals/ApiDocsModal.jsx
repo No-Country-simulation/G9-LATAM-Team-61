@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * REST API Documentation Modal Component (Updated Endpoint Paths)
+ * REST API Documentation Modal Component (Clearly labeling Live vs Demo endpoints)
  */
 export function ApiDocsModal({ isOpen, onClose }) {
   if (!isOpen) return null;
@@ -29,45 +29,40 @@ export function ApiDocsModal({ isOpen, onClose }) {
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
           </svg>
-          Documentación API
+          Documentación API (Estado de Endpoints)
         </h2>
 
         <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
           Operaciones de Contenido
         </h3>
-        <div className="api-endpoint">
+        <div className="api-endpoint" style={{ borderLeft: '4px solid #05CD99' }}>
           <span className="method-post">POST</span>
           <span className="api-path">/api/contenido</span>
-          <span className="api-desc">Clasifica documento síncrono.</span>
+          <span className="api-desc" style={{ color: '#05CD99', fontWeight: 'bold' }}>[En Vivo - Spring Boot]</span>
         </div>
-        <div className="api-endpoint">
+        <div className="api-endpoint" style={{ borderLeft: '4px solid #D97706', opacity: 0.8 }}>
           <span className="method-post">POST</span>
           <span className="api-path">/api/contenido/lote</span>
-          <span className="api-desc">Carga masiva (CSV array).</span>
+          <span className="api-desc" style={{ color: '#D97706' }}>[Próximamente / Demo]</span>
         </div>
-        <div className="api-endpoint">
+        <div className="api-endpoint" style={{ borderLeft: '4px solid #D97706', opacity: 0.8 }}>
           <span className="method-post">POST</span>
           <span className="api-path">/api/contenido/agrupar</span>
-          <span className="api-desc">Dispara Clustering (K-Means).</span>
+          <span className="api-desc" style={{ color: '#D97706' }}>[Próximamente / Demo]</span>
         </div>
 
         <h3 style={{ fontSize: '1.1rem', marginTop: '2rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
           Búsquedas y Recomendaciones
         </h3>
-        <div className="api-endpoint">
+        <div className="api-endpoint" style={{ borderLeft: '4px solid #D97706', opacity: 0.8 }}>
           <span className="method-get">GET</span>
           <span className="api-path">/api/buscar</span>
-          <span className="api-desc">Búsqueda semántica inteligente.</span>
+          <span className="api-desc" style={{ color: '#D97706' }}>[Filtro Cliente / Demo]</span>
         </div>
-        <div className="api-endpoint">
-          <span className="method-get">GET</span>
-          <span className="api-path">/api/contenido/{'{id}'}/recomendados</span>
-          <span className="api-desc">Obtiene documentos similares.</span>
-        </div>
-        <div className="api-endpoint">
+        <div className="api-endpoint" style={{ borderLeft: '4px solid #D97706', opacity: 0.8 }}>
           <span className="method-get">GET</span>
           <span className="api-path">/api/categorias</span>
-          <span className="api-desc">Lista 5 categorías estáticas.</span>
+          <span className="api-desc" style={{ color: '#D97706' }}>[Próximamente / Demo]</span>
         </div>
       </div>
     </div>

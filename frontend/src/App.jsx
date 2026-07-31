@@ -80,8 +80,8 @@ export function App() {
 
   const handleClassify = async (formData) => {
     if (!formData || !formData.content) {
-      showToast('Por favor ingresa al menos el contenido crudo a clasificar');
-      return;
+      showToast('Por favor ingresa al menos el contenido crudo a clasificar', 'error');
+      return false;
     }
 
     setIsProcessing(true);
@@ -98,11 +98,13 @@ export function App() {
       if (result.isLiveApi) {
         showToast('¡Documento clasificado en vivo por Spring Boot!', 'success');
       } else {
-        showToast('¡Documento clasificado e indexado (Modo Demo)!', 'success');
+        showToast('¡Documento clasificado e indexado (Modo Demo Local)!', 'success');
       }
-    } catch {
+      return true;
+    } catch (err) {
       setIsProcessing(false);
-      showToast('Error en el servicio de clasificación de contenido', 'error');
+      showToast(err.message || 'Error en el servicio de clasificación de contenido', 'error');
+      return false;
     }
   };
 

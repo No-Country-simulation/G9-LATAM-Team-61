@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Button from '../common/Button';
 
 /**
- * Upload Modal Component for CSV Bulk Upload (Phase 5)
+ * Upload Modal Component for CSV Bulk Upload (Phase 5 - Marked as Demo / Próximamente)
  */
 export function UploadModal({ isOpen, onClose, onProcessBatch }) {
   const [isFileUploaded, setIsFileUploaded] = useState(false);
@@ -51,7 +51,7 @@ export function UploadModal({ isOpen, onClose, onProcessBatch }) {
             <line x1="12" y1="18" x2="12" y2="12"></line>
             <polyline points="9 15 12 12 15 15"></polyline>
           </svg>
-          Importar Conocimiento (CSV)
+          Importar Conocimiento (CSV) <span style={{ fontSize: '0.8rem', color: '#D97706', fontWeight: 'bold', marginLeft: '6px' }}>(Próximamente / Demo)</span>
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1rem' }}>
           Sube un archivo `.csv` con múltiples textos para clasificarlos por lotes. El modelo procesará cada fila de manera asíncrona.
@@ -78,7 +78,7 @@ export function UploadModal({ isOpen, onClose, onProcessBatch }) {
           </h3>
           <p id="upload-text-sub" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
             {isFileUploaded
-              ? '2,000 filas listas para procesar por lotes asíncronos.'
+              ? '2,000 filas listas para procesar por lotes asíncronos (Simulación Demo).'
               : 'o haz clic para seleccionar (ej: dataset_stackpulse.csv)'}
           </p>
         </div>
@@ -90,7 +90,7 @@ export function UploadModal({ isOpen, onClose, onProcessBatch }) {
             disabled={!isFileUploaded}
             style={{ opacity: isFileUploaded ? 1 : 0.5 }}
           >
-            Procesar Lote
+            Procesar Lote (Simulado)
           </Button>
         </div>
       </div>

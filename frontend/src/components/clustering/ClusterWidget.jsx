@@ -18,7 +18,7 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
           </svg>
-          Tendencias (K-Means)
+          Tendencias (K-Means) <span style={{ fontSize: '0.75rem', opacity: 0.7, color: 'var(--brand-primary)', marginLeft: '4px' }}>(Demo)</span>
         </div>
         <button
           id="btn-recluster"
@@ -40,7 +40,7 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
           >
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
           </svg>
-          <span id="txt-recluster">{isReclustering ? 'Calculando...' : 'Regenerar'}</span>
+          <span id="txt-recluster">{isReclustering ? 'Calculando...' : 'Regenerar (Demo)'}</span>
         </button>
       </h2>
       <Card>
@@ -77,7 +77,7 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
           onClick={onOpenClusters}
         >
           <span style={{ color: 'var(--brand-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
-            Ver los grupos completos
+            Ver los grupos completos (Demo)
           </span>
         </div>
       </Card>

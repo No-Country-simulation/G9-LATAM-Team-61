@@ -5,16 +5,39 @@ import Button from '../common/Button';
 export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [charError, setCharError] = useState('');
 
-  const handleSubmit = (e) => {
+  const MAX_CHARS = 10000;
+
+  const handleContentChange = (e) => {
+    const val = e.target.value;
+    setContent(val);
+    if (val.length > MAX_CHARS) {
+      setCharError(`Excede el límite máximo de ${MAX_CHARS.toLocaleString()} caracteres (${val.length.toLocaleString()})`);
+    } else {
+      setCharError('');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!content.trim()) {
-      onClassify(null); // Triggers warning toast
+      onClassify(null);
       return;
     }
-    onClassify({ title, content });
-    setTitle('');
-    setContent('');
+
+    if (content.length > MAX_CHARS) {
+      setCharError(`No se puede enviar: Excede los ${MAX_CHARS.toLocaleString()} caracteres.`);
+      return;
+    }
+
+    // Call onClassify and only clear text inputs if classification succeeds!
+    const success = await onClassify({ title, content });
+    if (success) {
+      setTitle('');
+      setContent('');
+      setCharError('');
+    }
   };
 
   return (
@@ -39,23 +62,39 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="doc-content">Contenido Crudo *</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label htmlFor="doc-content">Contenido Crudo *</label>
+              <span style={{ fontSize: '0.75rem', color: content.length > MAX_CHARS ? '#E11D48' : 'var(--text-secondary)' }}>
+                {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+              </span>
+            </div>
             <textarea
               id="doc-content"
               className="form-control"
-              rows="3"
+              rows="4"
               placeholder="Pega la documentación o logs aquí..."
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={handleContentChange}
+              style={{
+                borderColor: charError ? '#E11D48' : undefined,
+              }}
             ></textarea>
+            {charError && (
+              <span style={{ fontSize: '0.8rem', color: '#E11D48', marginTop: '0.3rem', display: 'block' }}>
+                ⚠️ {charError}
+              </span>
+            )}
           </div>
+
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <Button
               type="submit"
               variant="primary"
               style={{ flex: 2 }}
               isLoading={isProcessing}
+              disabled={Boolean(charError)}
             >
               <svg className="icon icon-sm" viewBox="0 0 24 24">
                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -75,7 +114,7 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
                 <line x1="12" y1="18" x2="12" y2="12"></line>
                 <polyline points="9 15 12 12 15 15"></polyline>
               </svg>
-              CSV Lotes
+              CSV Lotes (Demo)
             </Button>
           </div>
         </form>

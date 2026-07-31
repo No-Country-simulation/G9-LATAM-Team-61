@@ -1,6 +1,7 @@
-// KMS REST API Service Layer (Sanitized, Secured & Fully Endpoint Covered)
+// KMS API Client Service (Separación estricta Modo Real vs Modo Demo + Manejo Transparente de Errores)
 
 export const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const INITIAL_DOCUMENTS = [
   { id: 1, title: 'Manejo de errores JWT', category: 'Backend', badgeClass: 'backend', tags: 'spring, auth, token', date: 'Hoy, 14:30' },
@@ -12,19 +13,16 @@ export const INITIAL_DOCUMENTS = [
 ];
 
 export const INITIAL_CLUSTERS = [
-  { id: 0, title: 'Grupo 0: Fallos Red y OCI', docsCount: 124, tags: 'oci, subnet, dns' },
-  { id: 1, title: 'Grupo 1: Seguridad & JWT', docsCount: 89, tags: 'auth, token, bearer' },
-  { id: 2, title: 'Grupo 2: React State & Hooks', docsCount: 142, tags: 'react, useeffect, props' },
-  { id: 3, title: 'Grupo 3: Docker & Pipelines', docsCount: 98, tags: 'docker, compose, yaml' },
-  { id: 4, title: 'Grupo 4: Spring Data JPA', docsCount: 110, tags: 'entity, repository, postgres' },
-  { id: 5, title: 'Grupo 5: Python & FastAPI', docsCount: 76, tags: 'uvicorn, pydantic, joblib' },
-  { id: 6, title: 'Grupo 6: ML & Scikit-Learn', docsCount: 65, tags: 'vectorizer, kmeans, score' },
-  { id: 7, title: 'Grupo 7: Nginx & SSL', docsCount: 50, tags: 'certbot, proxy, port' }
+  { id: 0, title: 'Grupo 0: Fallos Red y OCI (Demo)', docsCount: 124, tags: 'oci, subnet, dns' },
+  { id: 1, title: 'Grupo 1: Seguridad & JWT (Demo)', docsCount: 89, tags: 'auth, token, bearer' },
+  { id: 2, title: 'Grupo 2: React State & Hooks (Demo)', docsCount: 142, tags: 'react, useeffect, props' },
+  { id: 3, title: 'Grupo 3: Docker & Pipelines (Demo)', docsCount: 98, tags: 'docker, compose, yaml' },
+  { id: 4, title: 'Grupo 4: Spring Data JPA (Demo)', docsCount: 110, tags: 'entity, repository, postgres' },
+  { id: 5, title: 'Grupo 5: Python & FastAPI (Demo)', docsCount: 76, tags: 'uvicorn, pydantic, joblib' },
+  { id: 6, title: 'Grupo 6: ML & Scikit-Learn (Demo)', docsCount: 65, tags: 'vectorizer, kmeans, score' },
+  { id: 7, title: 'Grupo 7: Nginx & SSL (Demo)', docsCount: 50, tags: 'certbot, proxy, port' }
 ];
 
-/**
- * XSS & HTML Input Sanitizer helper
- */
 export function sanitizeInput(str) {
   if (typeof str !== 'string') return '';
   return str
@@ -43,15 +41,14 @@ export function inferTitleFromContent(text) {
 }
 
 /**
- * Endpoint 1: Health Check Ping
+ * Health Check to test connection to Spring Boot backend (GET /api/health)
  */
 export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) return false;
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    // Spring Boot provides /v3/api-docs for OpenAPI
-    const rootUrl = apiUrl.replace(/\/api\/?$/, '');
-    const response = await fetch(`${rootUrl}/v3/api-docs`, { signal: controller.signal });
+    const response = await fetch(`${apiUrl}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     return response.ok;
   } catch {
@@ -60,58 +57,77 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
 }
 
 /**
- * Endpoint 2: Single Text Classification (POST /api/contenido)
+ * Single Text Classification (POST /api/contenido)
+ * Modos aislados: Modo Real (Lanza errores explícitos) vs Modo Demo (Inferencia Local Simula)
  */
 export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL) {
   const contentText = (content || '').trim();
+  if (contentText.length > 10000) {
+    throw new Error('El contenido excede el límite máximo permitido de 10,000 caracteres.');
+  }
+
   const docTitle = (title || '').trim() || inferTitleFromContent(contentText);
 
+  // Si está activado explícitamente el Modo Demo Local
+  if (IS_MOCK_MODE) {
+    return executeLocalMockClassification(docTitle, contentText);
+  }
+
+  // MODO REAL: Petición HTTP a Spring Boot
   const sanitizedContent = contentText.slice(0, 10000);
 
+  let response;
   try {
-    const response = await fetch(`${apiUrl}/contenido`, {
+    response = await fetch(`${apiUrl}/contenido`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         titulo: docTitle,
         descripcion: sanitizedContent,
+        texto: sanitizedContent,
       }),
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      const category = data.categoria || 'Backend';
-      const badgeClass = category.toLowerCase().replace(/\s+/g, '');
-      const confidence = data.probabilidad ? `${(data.probabilidad * 100).toFixed(1)}%` : '94.5%';
-      
-      const rawTags = data.palabrasClave || data.palabras_clave || data.informacion_adicional;
-      const tags = Array.isArray(rawTags)
-        ? rawTags.join(', ')
-        : 'java, spring, rest';
-
-      let formattedDate = 'Hace un momento';
-      if (data.fechaAnalisis) {
-        try {
-          formattedDate = new Date(data.fechaAnalisis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch {}
-      }
-
-      return {
-        id: data.id || data.id_registro || Date.now(),
-        title: data.titulo || docTitle,
-        category,
-        badgeClass,
-        confidence,
-        tags,
-        date: formattedDate,
-        isLiveApi: true,
-      };
-    }
-  } catch (error) {
-    console.warn('Backend API /contenido unavailable. Falling back to local ML inference simulation.', error);
+  } catch {
+    throw new Error('Error de conexión: No se pudo establecer comunicación con el servidor de Spring Boot (http://localhost:8080).');
   }
 
-  // Local ML Model Fallback Simulation
+  if (response.ok) {
+    const data = await response.json();
+    const category = data.categoria || 'Backend';
+    const badgeClass = category.toLowerCase().replace(/\s+/g, '');
+    const confidence = data.probabilidad ? `${(data.probabilidad * 100).toFixed(1)}%` : '94.5%';
+    const tags = Array.isArray(data.informacion_adicional)
+      ? data.informacion_adicional.join(', ')
+      : 'java, spring, rest';
+
+    return {
+      id: data.id_registro || Date.now(),
+      title: docTitle,
+      category,
+      badgeClass,
+      confidence,
+      tags,
+      date: 'Hace un momento',
+      isLiveApi: true,
+    };
+  }
+
+  // Manejo explícito de respuestas de error HTTP 4xx / 5xx sin ocultar fallos
+  if (response.status === 400) {
+    throw new Error('HTTP 400: Solicitud incorrecta o datos inválidos según el servidor.');
+  } else if (response.status === 502) {
+    throw new Error('HTTP 502 Bad Gateway: El servidor de inferencia ML no está disponible.');
+  } else if (response.status === 504) {
+    throw new Error('HTTP 504 Gateway Timeout: El análisis de inferencia excedió el tiempo límite.');
+  } else {
+    throw new Error(`HTTP ${response.status}: Error en el servidor backend de Spring Boot.`);
+  }
+}
+
+/**
+ * Ejecución del Modo Demo Local (Simulación aislada)
+ */
+async function executeLocalMockClassification(docTitle, contentText) {
   const lower = contentText.toLowerCase();
   let category = 'Backend';
   let badgeClass = 'backend';
@@ -151,7 +167,7 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
 }
 
 /**
- * Endpoint 3: Bulk Batch Classification (POST /api/contenido/lote)
+ * Endpoint 3: Bulk Batch Classification (Simulación Demo / Próximamente)
  */
 export async function processBatchContent(batchArray, apiUrl = DEFAULT_API_URL) {
   try {
@@ -165,14 +181,14 @@ export async function processBatchContent(batchArray, apiUrl = DEFAULT_API_URL) 
       return await response.json();
     }
   } catch (error) {
-    console.warn('Backend API /contenido/lote unavailable. Using simulated batch processing.', error);
+    console.warn('Endpoint /contenido/lote en desarrollo. Ejecutando procesamiento en Modo Demo.', error);
   }
 
-  return { archivos_procesados: batchArray.length || 2000, tiempo_total_ms: 250 };
+  return { archivos_procesados: batchArray.length || 2000, tiempo_total_ms: 250, isDemo: true };
 }
 
 /**
- * Endpoint 4: Trigger K-Means Re-Clustering (POST /api/contenido/agrupar)
+ * Endpoint 4: Trigger K-Means Re-Clustering (Simulación Demo / Próximamente)
  */
 export async function triggerReclustering(apiUrl = DEFAULT_API_URL) {
   try {
@@ -185,25 +201,9 @@ export async function triggerReclustering(apiUrl = DEFAULT_API_URL) {
       return await response.json();
     }
   } catch (error) {
-    console.warn('Backend API /contenido/agrupar unavailable. Simulating clustering recalculation.', error);
+    console.warn('Endpoint /contenido/agrupar en desarrollo. Ejecutando recálculo en Modo Demo.', error);
   }
 
   await new Promise((resolve) => setTimeout(resolve, 1200));
-  return { status: 'success', clusters: 8 };
-}
-
-/**
- * Endpoint 5: Semantic Search & Processed Docs Fetch (GET /api/buscar?q=...)
- */
-export async function searchProcessedDocs(query, apiUrl = DEFAULT_API_URL) {
-  if (!query) return null;
-  try {
-    const response = await fetch(`${apiUrl}/buscar?q=${encodeURIComponent(query)}`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (error) {
-    console.warn('Backend API /buscar unavailable. Searching client-side dataset.', error);
-  }
-  return null;
+  return { status: 'success', clusters: 8, isDemo: true };
 }
