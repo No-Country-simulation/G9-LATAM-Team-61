@@ -44,7 +44,7 @@ export function inferTitleFromContent(text) {
 }
 
 /**
- * Health Check to test connection to Spring Boot backend (GET /api/health)
+ * Health Check Probe for Spring Boot backend
  */
 export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
   if (IS_MOCK_MODE) return false;
@@ -53,7 +53,7 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     const baseUrl = apiUrl.replace(/\/api\/?$/, '');
 
-    // Intentar /api/health primero, y si no responde 200, verificar /v3/api-docs (Swagger de Spring Boot)
+    // Intentar /api/health primero, y si no responde, verificar /v3/api-docs (Swagger UI de Spring Boot)
     let response = await fetch(`${apiUrl}/health`, { signal: controller.signal }).catch(() => null);
     if (!response || !response.ok) {
       response = await fetch(`${baseUrl}/v3/api-docs`, { signal: controller.signal }).catch(() => null);
@@ -68,7 +68,7 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
 
 /**
  * Single Text Classification (POST /api/contenido)
- * Modos aislados: Modo Real (Lanza errores explícitos) vs Modo Demo (Inferencia Local Simula)
+ * Contrato estricto DTO: Envía únicamente { titulo, descripcion }
  */
 export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL, forceDemoMode = IS_MOCK_MODE) {
   const contentText = (content || '').trim();
@@ -101,7 +101,6 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
       body: JSON.stringify({
         titulo: docTitle,
         descripcion: sanitizedContent,
-        texto: sanitizedContent,
       }),
       signal: controller.signal,
     });
@@ -114,14 +113,14 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
     throw new Error('Error de conexión: No se pudo establecer comunicación con el servidor de Spring Boot (http://localhost:8080).');
   }
 
-  if (response.ok) {
+  // Acepta 200 OK y 201 Created
+  if (response.ok || response.status === 201 || response.status === 200) {
     const data = await response.json();
     const category = data.categoria || 'Backend';
     const badgeClass = category.toLowerCase().replace(/\s+/g, '');
     const rawProb = data.probabilidad !== undefined ? data.probabilidad : 0.945;
     const confidence = `${(rawProb * 100).toFixed(1)}%`;
     
-    // Transformación correcta de palabras claves / tags
     const rawTags = data.palabrasClave || data.palabras_clave || data.informacion_adicional || ['java', 'spring', 'rest'];
     const tags = Array.isArray(rawTags) ? rawTags.join(', ') : String(rawTags);
 

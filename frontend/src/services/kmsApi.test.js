@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { classifyContent, checkBackendHealth } from './kmsApi.js';
 
-describe('KMS API Service Unit & Integration Tests (DevOps Verification Suite)', () => {
+describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification Suite)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('1. Debe transformar correctamente palabrasClave, categoria y probabilidad cuando la API responde OK 200', async () => {
+  it('1. Debe enviar estrictamente { titulo, descripcion } sin incluir el campo deprecado texto, y manejar respuestas 201 Created', async () => {
     const mockResponseData = {
       id_registro: 101,
       categoria: 'DevOps',
@@ -14,13 +14,28 @@ describe('KMS API Service Unit & Integration Tests (DevOps Verification Suite)',
       palabrasClave: ['oci', 'docker', 'ci-cd'],
     };
 
-    global.fetch = vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      status: 200,
+      status: 201, // Acepta 201 Created de Spring Boot
       json: async () => mockResponseData,
     });
 
-    const result = await classifyContent({ title: 'Servidores OCI', content: 'Configuración Docker en OCI para la infraestructura.' }, 'http://localhost:8080/api', false);
+    global.fetch = mockFetch;
+
+    const result = await classifyContent(
+      { title: 'Servidores OCI', content: 'Configuración Docker en OCI para la infraestructura.' },
+      'http://localhost:8080/api',
+      false
+    );
+
+    // Aserción estricta sobre el contrato DTO enviado en el cuerpo de la petición HTTP
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const fetchCallArgs = mockFetch.mock.calls[0];
+    const sentBody = JSON.parse(fetchCallArgs[1].body);
+
+    expect(sentBody).toHaveProperty('titulo', 'Servidores OCI');
+    expect(sentBody).toHaveProperty('descripcion', 'Configuración Docker en OCI para la infraestructura.');
+    expect(sentBody.texto).toBeUndefined(); // Garantiza que NO se envía el campo 'texto'
 
     expect(result.title).toBe('Servidores OCI');
     expect(result.category).toBe('DevOps');
@@ -56,12 +71,10 @@ describe('KMS API Service Unit & Integration Tests (DevOps Verification Suite)',
   });
 
   it('5. Debe validar los límites mínimos (10 chars) y máximos (10,000 chars) del formulario', async () => {
-    // Menos de 10 caracteres
     await expect(classifyContent({ title: 'Corto', content: '123456789' }, 'http://localhost:8080/api', false))
       .rejects
       .toThrow('El contenido debe tener al menos 10 caracteres.');
 
-    // Más de 10,000 caracteres
     const longContent = 'a'.repeat(10001);
     await expect(classifyContent({ title: 'Largo', content: longContent }, 'http://localhost:8080/api', false))
       .rejects
