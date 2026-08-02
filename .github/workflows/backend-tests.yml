@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   test:
@@ -38,7 +39,7 @@ jobs:
         run: ./mvnw test
 
       - name: Publicar resultados de tests
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Resultados Maven
