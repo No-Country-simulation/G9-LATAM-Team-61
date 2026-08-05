@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.service;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
 import com.g9_latam_team_61.backend.client.MlServiceException;
+import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.mapper.NotaMapper;
@@ -13,10 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import org.springframework.data.domain.*;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -87,4 +87,61 @@ class NotaServiceTest {
 
         verify(notaRepository, never()).save(any());
     }
+
+    @Test
+    void obtenerHistorial_debeFiltrarPorCategoria() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Nota nota = new Nota();
+        nota.setCategoria("DevOps");
+        Page<Nota> notaPage = new PageImpl<>(List.of(nota));
+
+        when(notaRepository.findByCategoriaIgnoreCase("DevOps", pageable)).thenReturn(notaPage);
+        when(notaMapper.toResponse(nota)).thenReturn(
+                new NotaResponse(1L, "Titulo", "DevOps", 0.9, List.of("test"), LocalDateTime.now())
+        );
+
+        Page<NotaResponse> resultado = notaService.obtenerHistorial("DevOps", pageable);
+
+        assertEquals(1, resultado.getTotalElements());
+        verify(notaRepository).findByCategoriaIgnoreCase("DevOps", pageable);
+    }
+
+    @Test
+    void obtenerEstadisticas_debeCalcularTotalYPromedio() {
+        when(notaRepository.count()).thenReturn(5L);
+        when(notaRepository.findConfianzaPromedio()).thenReturn(0.912345);
+
+        EstadisticasResponse response = notaService.obtenerEstadisticas();
+
+        assertEquals(5L, response.totalIndexados());
+        assertEquals(0.9123, response.confianzaPromedio());
+    }
+
+    @Test
+    void obtenerEstadisticas_debeManejarBaseDatosVacia() {
+        when(notaRepository.count()).thenReturn(0L);
+        when(notaRepository.findConfianzaPromedio()).thenReturn(null);
+
+        EstadisticasResponse response = notaService.obtenerEstadisticas();
+
+        assertEquals(0L, response.totalIndexados());
+        assertNull(response.confianzaPromedio());
+    }
+
+    @Test
+    void obtenerHistorial_debeRechazarPageSizeExcesivo() {
+        Pageable pageableInvalido = PageRequest.of(0, 200);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> notaService.obtenerHistorial(null, pageableInvalido));
+    }
+
+    @Test
+    void obtenerHistorial_debeRechazarCampoDeOrdenNoPermitido() {
+        Pageable pageableInvalido = PageRequest.of(0, 10, Sort.by("campoInexistente"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> notaService.obtenerHistorial(null, pageableInvalido));
+    }
+
 }
