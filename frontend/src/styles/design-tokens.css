@@ -1,0 +1,19 @@
+/* UI/UX Design System Tokens - SaaS Enterprise Light Theme (from mockup_single_page.html) */
+:root {
+  --bg-app: #F4F7FE;
+  --bg-surface: #FFFFFF;
+  --bg-hover: #F8FAFC;
+  --text-primary: #1B2559;
+  --text-secondary: #A3AED0;
+  --border-color: #E0E5F2;
+  
+  --brand-primary: #4318FF;
+  --brand-primary-hover: #3311CC;
+  --brand-secondary: #05CD99;
+  
+  --shadow-sm: 0px 4px 12px rgba(112, 144, 176, 0.08);
+  --shadow-card: 0px 18px 40px rgba(112, 144, 176, 0.12);
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-full: 9999px;
+}
