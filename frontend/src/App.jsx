@@ -15,6 +15,8 @@ import ApiDocsModal from './components/modals/ApiDocsModal';
 import {
   classifyContent,
   checkBackendHealth,
+  fetchHistory,
+  fetchStats,
   INITIAL_DOCUMENTS,
   INITIAL_CLUSTERS,
 } from './services/kmsApi';
@@ -41,13 +43,26 @@ export function App() {
     type: 'info',
   });
 
-  // Check API Connection status on mount
+  // Check API Connection status & fetch real persisted history on mount
   useEffect(() => {
-    async function verifyHealth() {
+    async function initData() {
       const isAlive = await checkBackendHealth();
       setIsApiLive(isAlive);
+
+      if (isAlive) {
+        const historyData = await fetchHistory();
+        if (historyData && historyData.items && historyData.items.length > 0) {
+          setDocuments(historyData.items);
+          setTotalCount(historyData.totalElements);
+        }
+
+        const stats = await fetchStats();
+        if (stats && stats.totalDocumentos !== undefined) {
+          setTotalCount(stats.totalDocumentos);
+        }
+      }
     }
-    verifyHealth();
+    initData();
   }, []);
 
   // ESC key listener to close modals

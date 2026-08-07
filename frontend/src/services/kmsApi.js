@@ -67,6 +67,78 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
 }
 
 /**
+ * Fetch Persisted History from Spring Boot (GET /api/contenido)
+ */
+export async function fetchHistory(categoria = '', page = 0, size = 10, apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) return null;
+  try {
+    const url = new URL(`${apiUrl}/contenido`);
+    if (categoria) url.searchParams.append('categoria', categoria);
+    url.searchParams.append('page', page);
+    url.searchParams.append('size', size);
+
+    const response = await fetch(url.toString());
+    if (response.ok) {
+      const data = await response.json();
+      const items = (data.content || []).map((item) => {
+        const category = item.categoria || 'Otros';
+        const badgeClass = category.toLowerCase().replace(/\s+/g, '');
+        const rawProb = item.probabilidad !== undefined ? item.probabilidad : 0.0;
+        const confidence = `${(rawProb * 100).toFixed(1)}%`;
+        const rawTags = item.palabrasClave || item.palabras_clave || [];
+        const tags = Array.isArray(rawTags) ? rawTags.join(', ') : String(rawTags);
+
+        let formattedDate = 'Reciente';
+        if (item.fechaAnalisis) {
+          try {
+            const d = new Date(item.fechaAnalisis);
+            formattedDate = d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+          } catch {
+            formattedDate = 'Reciente';
+          }
+        }
+
+        return {
+          id: item.id,
+          title: item.titulo || 'Sin Título',
+          category,
+          badgeClass,
+          confidence,
+          tags,
+          date: formattedDate,
+          isLiveApi: true,
+        };
+      });
+
+      return {
+        items,
+        totalElements: data.totalElements || items.length,
+        totalPages: data.totalPages || 1,
+      };
+    }
+  } catch (err) {
+    console.warn('Error obteniendo historial real de Spring Boot:', err);
+  }
+  return null;
+}
+
+/**
+ * Fetch Real Statistics from Spring Boot (GET /api/contenido/stats)
+ */
+export async function fetchStats(apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) return null;
+  try {
+    const response = await fetch(`${apiUrl}/contenido/stats`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.warn('Error obteniendo estadísticas reales:', err);
+  }
+  return null;
+}
+
+/**
  * Single Text Classification (POST /api/contenido)
  * Contrato estricto DTO: Envía únicamente { titulo, descripcion }
  */
