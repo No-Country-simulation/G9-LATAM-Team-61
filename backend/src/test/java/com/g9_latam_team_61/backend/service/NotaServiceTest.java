@@ -39,43 +39,43 @@ class NotaServiceTest {
     @Test
     void procesar_debeGuardarNotaYRetornarResponse() {
 
-        NotaRequest request = new NotaRequest("Titulo prueba", "Descripcion con mas de 10 caracteres");
+        NotaRequest request = new NotaRequest("Descripcion con mas de 30 caracteres para testing completo");
         MlResult mlResult = new MlResult("DevOps", 0.94, List.of("OCI", "Docker"), 32.5);
 
         Nota notaSinGuardar = new Nota();
-        notaSinGuardar.setTitulo(request.titulo());
         notaSinGuardar.setContenidoOriginal(request.descripcion());
+        notaSinGuardar.setTiempoProcesamientoMs(32.5);
 
         Nota notaGuardada = new Nota();
         notaGuardada.setId(1L);
-        notaGuardada.setTitulo(request.titulo());
+        notaGuardada.setContenidoOriginal(request.descripcion());
         notaGuardada.setCategoria("DevOps");
         notaGuardada.setProbabilidad(0.94);
         notaGuardada.setPalabrasClave(List.of("OCI", "Docker"));
         notaGuardada.setFechaAnalisis(LocalDateTime.now());
+        notaGuardada.setTiempoProcesamientoMs(32.5);
 
         NotaResponse expectedResponse = new NotaResponse(
-                1L, "Titulo prueba", "DevOps", 0.94,
+                1L, "Descripcion con mas de 30 caracteres para testing completo", "DevOps", 0.94,
                 List.of("OCI", "Docker"), notaGuardada.getFechaAnalisis(), 32.5
         );
 
         when(mlClient.analizar(anyString())).thenReturn(mlResult);
         when(notaMapper.toEntity(request, mlResult)).thenReturn(notaSinGuardar);
         when(notaRepository.save(notaSinGuardar)).thenReturn(notaGuardada);
-        when(notaMapper.toResponse(notaGuardada, 32.5)).thenReturn(expectedResponse);
+        when(notaMapper.toResponse(notaGuardada)).thenReturn(expectedResponse);
 
         NotaResponse response = notaService.procesar(request);
 
         assertEquals(expectedResponse, response);
-        verify(mlClient).analizar("Descripcion con mas de 10 caracteres");
+        verify(mlClient).analizar("Descripcion con mas de 30 caracteres para testing completo");
         verify(notaRepository).save(notaSinGuardar);
     }
 
     @Test
     void procesar_noDebeGuardarNada_siFastApiFalla() {
 
-
-        NotaRequest request = new NotaRequest(null, "Descripcion sin titulo pero valida");
+        NotaRequest request = new NotaRequest("Descripcion con mas de 30 caracteres valida sin titulo");
 
         when(mlClient.analizar(anyString()))
                 .thenThrow(new MlServiceException("FastAPI no disponible"));
@@ -94,7 +94,7 @@ class NotaServiceTest {
 
         when(notaRepository.findByCategoriaIgnoreCase("DevOps", pageable)).thenReturn(notaPage);
         when(notaMapper.toResponse(nota)).thenReturn(
-                new NotaResponse(1L, "Titulo", "DevOps", 0.9, List.of("test"), LocalDateTime.now(), null)
+                new NotaResponse(1L, "Contenido", "DevOps", 0.9, List.of("test"), LocalDateTime.now(), null)
         );
 
         Page<NotaResponse> resultado = notaService.obtenerHistorial("DevOps", pageable);
@@ -140,5 +140,4 @@ class NotaServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> notaService.obtenerHistorial(null, pageableInvalido));
     }
-
 }

@@ -5,7 +5,7 @@ import java.util.List;
 
 public record NotaResponse(
         Long id,
-        String titulo,
+        String contenidoOriginal,
         String categoria,
         Double probabilidad,
         List<String> palabrasClave,

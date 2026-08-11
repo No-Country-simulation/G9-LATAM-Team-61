@@ -18,6 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,12 +43,12 @@ class NotaIntegrationTest {
     private MlClient mlClient;
 
     @Test
-    void debePersistirContenidoOriginal_alProcesarNotaExitosamente() throws Exception {
+    void debePersistirContenidoOriginalYMetricas_alProcesarNotaExitosamente() throws Exception {
         when(mlClient.analizar(anyString()))
                 .thenReturn(new MlResult("DevOps", 0.94, List.of("OCI", "Docker"), 32.5));
 
-        String descripcionOriginal = "Configuracion de balanceadores de carga en OCI usando Docker.";
-        NotaRequest request = new NotaRequest("Documentacion de Servidores", descripcionOriginal);
+        String descripcionOriginal = "Configuracion de balanceadores de carga en OCI usando Docker y Kubernetes.";
+        NotaRequest request = new NotaRequest(descripcionOriginal);
 
         mockMvc.perform(post("/api/contenido")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -57,5 +58,7 @@ class NotaIntegrationTest {
         List<Nota> notas = notaRepository.findAll();
         assertEquals(1, notas.size());
         assertEquals(descripcionOriginal, notas.get(0).getContenidoOriginal());
+        assertNotNull(notas.get(0).getTiempoProcesamientoMs());
+        assertEquals(32.5, notas.get(0).getTiempoProcesamientoMs());
     }
 }

@@ -11,27 +11,35 @@ public class NotaMapper {
 
     public Nota toEntity(NotaRequest request, MlResult mlResult) {
         Nota nota = new Nota();
-        nota.setTitulo(request.titulo());
         nota.setContenidoOriginal(request.descripcion());
         nota.setCategoria(mlResult.categoria());
         nota.setProbabilidad(mlResult.probabilidad());
         nota.setPalabrasClave(mlResult.palabrasClave());
+        nota.setTiempoProcesamientoMs(mlResult.tiempoProcesamientoMs());
         return nota;
     }
 
     public NotaResponse toResponse(Nota nota) {
-        return toResponse(nota, null);
+        return new NotaResponse(
+                nota.getId(),
+                nota.getContenidoOriginal(),
+                nota.getCategoria(),
+                nota.getProbabilidad(),
+                nota.getPalabrasClave(),
+                nota.getFechaAnalisis(),
+                nota.getTiempoProcesamientoMs()
+        );
     }
 
     public NotaResponse toResponse(Nota nota, Double tiempoProcesamientoMs) {
         return new NotaResponse(
                 nota.getId(),
-                nota.getTitulo(),
+                nota.getContenidoOriginal(),
                 nota.getCategoria(),
                 nota.getProbabilidad(),
                 nota.getPalabrasClave(),
                 nota.getFechaAnalisis(),
-                tiempoProcesamientoMs
+                tiempoProcesamientoMs != null ? tiempoProcesamientoMs : nota.getTiempoProcesamientoMs()
         );
     }
 }

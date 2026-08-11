@@ -40,9 +40,9 @@ class NotaControllerTest {
 
     @Test
     void analizar_debeRetornar201_conRequestValido() throws Exception {
-        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        NotaRequest request = new NotaRequest("Una descripcion valida de prueba con mas de 30 caracteres");
         NotaResponse response = new NotaResponse(
-                1L, "Titulo", "DevOps", 0.94, List.of("OCI", "Docker"), LocalDateTime.now(), 32.5
+                1L, "Una descripcion valida de prueba con mas de 30 caracteres", "DevOps", 0.94, List.of("OCI", "Docker"), LocalDateTime.now(), 32.5
         );
 
         when(notaService.procesar(any(NotaRequest.class))).thenReturn(response);
@@ -52,12 +52,13 @@ class NotaControllerTest {
                         .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.categoria").value("DevOps"))
-                .andExpect(jsonPath("$.probabilidad").value(0.94));
+                .andExpect(jsonPath("$.probabilidad").value(0.94))
+                .andExpect(jsonPath("$.tiempoProcesamientoMs").value(32.5));
     }
 
     @Test
     void analizar_debeRetornar400_siDescripcionEsMuyCorta() throws Exception {
-        NotaRequest invalido = new NotaRequest("Titulo", "corta");
+        NotaRequest invalido = new NotaRequest("corta");
 
         mockMvc.perform(post("/api/contenido")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -67,7 +68,7 @@ class NotaControllerTest {
 
     @Test
     void analizar_debeRetornar502_cuandoServicioMlFalla() throws Exception {
-        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        NotaRequest request = new NotaRequest("Una descripcion valida de prueba con mas de 30 caracteres");
         when(notaService.procesar(any(NotaRequest.class)))
                 .thenThrow(new MlServiceException("El servicio de análisis devolvió un error: 500 INTERNAL_SERVER_ERROR"));
 
@@ -80,7 +81,7 @@ class NotaControllerTest {
 
     @Test
     void analizar_debeRetornar504_cuandoServicioMlEsperaTimeout() throws Exception {
-        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        NotaRequest request = new NotaRequest("Una descripcion valida de prueba con mas de 30 caracteres");
         when(notaService.procesar(any(NotaRequest.class)))
                 .thenThrow(new MlServiceTimeoutException("El servicio de análisis no respondió a tiempo"));
 
@@ -93,7 +94,7 @@ class NotaControllerTest {
 
     @Test
     void analizar_debeRetornar500_cuandoOcurreExcepcionInesperada() throws Exception {
-        NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
+        NotaRequest request = new NotaRequest("Una descripcion valida de prueba con mas de 30 caracteres");
         when(notaService.procesar(any(NotaRequest.class)))
                 .thenThrow(new RuntimeException("Error inesperado en BD"));
 
@@ -107,7 +108,7 @@ class NotaControllerTest {
 
     @Test
     void historial_debeRetornarPaginaConEstructuraEsperada() throws Exception {
-        NotaResponse nota = new NotaResponse(1L, "Titulo", "DevOps", 0.94, List.of("OCI"), LocalDateTime.now(), null);
+        NotaResponse nota = new NotaResponse(1L, "Contenido de prueba", "DevOps", 0.94, List.of("OCI"), LocalDateTime.now(), null);
         Page<NotaResponse> pagina = new PageImpl<>(List.of(nota), PageRequest.of(0, 10), 1);
 
         when(notaService.obtenerHistorial(isNull(), any(Pageable.class))).thenReturn(pagina);
@@ -121,7 +122,7 @@ class NotaControllerTest {
 
     @Test
     void historial_debeFiltrarPorCategoria() throws Exception {
-        NotaResponse nota = new NotaResponse(1L, "Titulo", "Backend", 0.90, List.of("spring"), LocalDateTime.now(), null);
+        NotaResponse nota = new NotaResponse(1L, "Contenido backend", "Backend", 0.90, List.of("spring"), LocalDateTime.now(), null);
         Page<NotaResponse> pagina = new PageImpl<>(List.of(nota));
 
         when(notaService.obtenerHistorial(eq("Backend"), any(Pageable.class))).thenReturn(pagina);

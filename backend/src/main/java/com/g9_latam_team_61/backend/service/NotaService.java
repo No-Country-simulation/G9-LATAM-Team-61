@@ -3,11 +3,11 @@ package com.g9_latam_team_61.backend.service;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
-import com.g9_latam_team_61.backend.mapper.NotaMapper;
-import com.g9_latam_team_61.backend.repository.NotaRepository;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
+import com.g9_latam_team_61.backend.mapper.NotaMapper;
 import com.g9_latam_team_61.backend.model.Nota;
+import com.g9_latam_team_61.backend.repository.NotaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +24,7 @@ public class NotaService {
     private final NotaMapper notaMapper;
 
     private static final int MAX_PAGE_SIZE = 100;
-    private static final Set<String> CAMPOS_ORDENABLES = Set.of("fechaAnalisis", "categoria", "probabilidad", "titulo");
+    private static final Set<String> CAMPOS_ORDENABLES = Set.of("fechaAnalisis", "categoria", "probabilidad", "contenidoOriginal");
 
     public NotaResponse procesar(NotaRequest request) {
         MlResult mlResult = mlClient.analizar(request.descripcion());
@@ -32,7 +32,7 @@ public class NotaService {
         Nota nota = notaMapper.toEntity(request, mlResult);
         Nota notaGuardada = notaRepository.save(nota);
 
-        return notaMapper.toResponse(notaGuardada, mlResult.tiempoProcesamientoMs());
+        return notaMapper.toResponse(notaGuardada);
     }
 
     public Page<NotaResponse> obtenerHistorial(String categoria, Pageable pageable) {
