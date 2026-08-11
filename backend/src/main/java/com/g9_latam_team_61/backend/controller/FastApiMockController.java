@@ -18,7 +18,8 @@ public class FastApiMockController {
         FastApiResponse response = new FastApiResponse(
                 "DevOps",
                 0.94,
-                List.of("OCI", "Docker", "Balanceadores")
+                List.of("OCI", "Docker", "Balanceadores"),
+                32.5
         );
         return ResponseEntity.ok(response);
     }

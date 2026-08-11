@@ -33,7 +33,7 @@ public class MlClient {
 
         java.util.List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : java.util.List.of();
 
-        return new MlResult(response.categoria(), response.probabilidad(), palabrasClave);
+        return new MlResult(response.categoria(), response.probabilidad(), palabrasClave, response.tiempo_procesamiento_ms());
     }
 
     private void validarRespuesta(FastApiResponse response) {

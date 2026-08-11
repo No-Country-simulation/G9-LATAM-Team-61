@@ -33,7 +33,7 @@ public class NotaService {
         Nota nota = notaMapper.toEntity(request, mlResult);
         Nota notaGuardada = notaRepository.save(nota);
 
-        return notaMapper.toResponse(notaGuardada);
+        return notaMapper.toResponse(notaGuardada, mlResult.tiempoProcesamientoMs());
     }
 
     public Page<NotaResponse> obtenerHistorial(String categoria, Pageable pageable) {

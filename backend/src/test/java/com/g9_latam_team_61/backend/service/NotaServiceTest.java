@@ -40,7 +40,7 @@ class NotaServiceTest {
     void procesar_debeGuardarNotaYRetornarResponse() {
 
         NotaRequest request = new NotaRequest("Titulo prueba", "Descripcion con mas de 10 caracteres");
-        MlResult mlResult = new MlResult("DevOps", 0.94, List.of("OCI", "Docker"));
+        MlResult mlResult = new MlResult("DevOps", 0.94, List.of("OCI", "Docker"), 32.5);
 
         Nota notaSinGuardar = new Nota();
         notaSinGuardar.setTitulo(request.titulo());
@@ -56,20 +56,20 @@ class NotaServiceTest {
 
         NotaResponse expectedResponse = new NotaResponse(
                 1L, "Titulo prueba", "DevOps", 0.94,
-                List.of("OCI", "Docker"), notaGuardada.getFechaAnalisis()
+                List.of("OCI", "Docker"), notaGuardada.getFechaAnalisis(), 32.5
         );
 
         when(notaMapper.construirContenido(request))
-                .thenReturn("Titulo prueba. Descripcion con mas de 10 caracteres");
+                .thenReturn("Descripcion con mas de 10 caracteres");
         when(mlClient.analizar(anyString())).thenReturn(mlResult);
         when(notaMapper.toEntity(request, mlResult)).thenReturn(notaSinGuardar);
         when(notaRepository.save(notaSinGuardar)).thenReturn(notaGuardada);
-        when(notaMapper.toResponse(notaGuardada)).thenReturn(expectedResponse);
+        when(notaMapper.toResponse(notaGuardada, 32.5)).thenReturn(expectedResponse);
 
         NotaResponse response = notaService.procesar(request);
 
         assertEquals(expectedResponse, response);
-        verify(mlClient).analizar("Titulo prueba. Descripcion con mas de 10 caracteres");
+        verify(mlClient).analizar("Descripcion con mas de 10 caracteres");
         verify(notaRepository).save(notaSinGuardar);
     }
 
@@ -97,7 +97,7 @@ class NotaServiceTest {
 
         when(notaRepository.findByCategoriaIgnoreCase("DevOps", pageable)).thenReturn(notaPage);
         when(notaMapper.toResponse(nota)).thenReturn(
-                new NotaResponse(1L, "Titulo", "DevOps", 0.9, List.of("test"), LocalDateTime.now())
+                new NotaResponse(1L, "Titulo", "DevOps", 0.9, List.of("test"), LocalDateTime.now(), null)
         );
 
         Page<NotaResponse> resultado = notaService.obtenerHistorial("DevOps", pageable);

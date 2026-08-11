@@ -10,9 +10,7 @@ import org.springframework.stereotype.Component;
 public class NotaMapper {
 
     public String construirContenido(NotaRequest request) {
-        return request.titulo() != null && !request.titulo().isBlank()
-                ? request.titulo() + ". " + request.descripcion()
-                : request.descripcion();
+        return request.descripcion();
     }
 
     public Nota toEntity(NotaRequest request, MlResult mlResult) {
@@ -26,13 +24,18 @@ public class NotaMapper {
     }
 
     public NotaResponse toResponse(Nota nota) {
+        return toResponse(nota, null);
+    }
+
+    public NotaResponse toResponse(Nota nota, Double tiempoProcesamientoMs) {
         return new NotaResponse(
                 nota.getId(),
                 nota.getTitulo(),
                 nota.getCategoria(),
                 nota.getProbabilidad(),
                 nota.getPalabrasClave(),
-                nota.getFechaAnalisis()
+                nota.getFechaAnalisis(),
+                tiempoProcesamientoMs
         );
     }
 }

@@ -9,11 +9,7 @@ public record NotaResponse(
         String categoria,
         Double probabilidad,
         List<String> palabrasClave,
-        LocalDateTime fechaAnalisis
-
-//        Long tiempo_procesamiento_ms,
-//        List<Long> textos_similares,
-//        String version_modelo,
-//        String feedback_usuario
+        LocalDateTime fechaAnalisis,
+        Double tiempoProcesamientoMs
 ) {
 }

@@ -44,7 +44,7 @@ class NotaIntegrationTest {
     @Test
     void debePersistirContenidoOriginal_alProcesarNotaExitosamente() throws Exception {
         when(mlClient.analizar(anyString()))
-                .thenReturn(new MlResult("DevOps", 0.94, List.of("OCI", "Docker")));
+                .thenReturn(new MlResult("DevOps", 0.94, List.of("OCI", "Docker"), 32.5));
 
         String descripcionOriginal = "Configuracion de balanceadores de carga en OCI usando Docker.";
         NotaRequest request = new NotaRequest("Documentacion de Servidores", descripcionOriginal);

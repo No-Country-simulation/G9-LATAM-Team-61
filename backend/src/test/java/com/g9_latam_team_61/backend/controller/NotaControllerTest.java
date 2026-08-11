@@ -42,7 +42,7 @@ class NotaControllerTest {
     void analizar_debeRetornar201_conRequestValido() throws Exception {
         NotaRequest request = new NotaRequest("Titulo", "Una descripcion valida de prueba");
         NotaResponse response = new NotaResponse(
-                1L, "Titulo", "DevOps", 0.94, List.of("OCI", "Docker"), LocalDateTime.now()
+                1L, "Titulo", "DevOps", 0.94, List.of("OCI", "Docker"), LocalDateTime.now(), 32.5
         );
 
         when(notaService.procesar(any(NotaRequest.class))).thenReturn(response);
@@ -107,7 +107,7 @@ class NotaControllerTest {
 
     @Test
     void historial_debeRetornarPaginaConEstructuraEsperada() throws Exception {
-        NotaResponse nota = new NotaResponse(1L, "Titulo", "DevOps", 0.94, List.of("OCI"), LocalDateTime.now());
+        NotaResponse nota = new NotaResponse(1L, "Titulo", "DevOps", 0.94, List.of("OCI"), LocalDateTime.now(), null);
         Page<NotaResponse> pagina = new PageImpl<>(List.of(nota), PageRequest.of(0, 10), 1);
 
         when(notaService.obtenerHistorial(isNull(), any(Pageable.class))).thenReturn(pagina);
@@ -121,7 +121,7 @@ class NotaControllerTest {
 
     @Test
     void historial_debeFiltrarPorCategoria() throws Exception {
-        NotaResponse nota = new NotaResponse(1L, "Titulo", "Backend", 0.90, List.of("spring"), LocalDateTime.now());
+        NotaResponse nota = new NotaResponse(1L, "Titulo", "Backend", 0.90, List.of("spring"), LocalDateTime.now(), null);
         Page<NotaResponse> pagina = new PageImpl<>(List.of(nota));
 
         when(notaService.obtenerHistorial(eq("Backend"), any(Pageable.class))).thenReturn(pagina);

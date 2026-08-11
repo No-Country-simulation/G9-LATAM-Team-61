@@ -5,5 +5,6 @@ import java.util.List;
 public record FastApiResponse(
         String categoria,
         Double probabilidad,
-        List<String> palabras_clave
+        List<String> palabras_clave,
+        Double tiempo_procesamiento_ms
 ){}
