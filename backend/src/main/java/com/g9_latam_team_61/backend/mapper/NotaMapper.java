@@ -9,10 +9,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotaMapper {
 
-    public String construirContenido(NotaRequest request) {
-        return request.descripcion();
-    }
-
     public Nota toEntity(NotaRequest request, MlResult mlResult) {
         Nota nota = new Nota();
         nota.setTitulo(request.titulo());

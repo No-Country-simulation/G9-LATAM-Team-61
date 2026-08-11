@@ -27,8 +27,7 @@ public class NotaService {
     private static final Set<String> CAMPOS_ORDENABLES = Set.of("fechaAnalisis", "categoria", "probabilidad", "titulo");
 
     public NotaResponse procesar(NotaRequest request) {
-        String contenido = notaMapper.construirContenido(request);
-        MlResult mlResult = mlClient.analizar(contenido);
+        MlResult mlResult = mlClient.analizar(request.descripcion());
 
         Nota nota = notaMapper.toEntity(request, mlResult);
         Nota notaGuardada = notaRepository.save(nota);

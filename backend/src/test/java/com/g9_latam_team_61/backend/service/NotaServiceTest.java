@@ -59,8 +59,6 @@ class NotaServiceTest {
                 List.of("OCI", "Docker"), notaGuardada.getFechaAnalisis(), 32.5
         );
 
-        when(notaMapper.construirContenido(request))
-                .thenReturn("Descripcion con mas de 10 caracteres");
         when(mlClient.analizar(anyString())).thenReturn(mlResult);
         when(notaMapper.toEntity(request, mlResult)).thenReturn(notaSinGuardar);
         when(notaRepository.save(notaSinGuardar)).thenReturn(notaGuardada);
@@ -79,7 +77,6 @@ class NotaServiceTest {
 
         NotaRequest request = new NotaRequest(null, "Descripcion sin titulo pero valida");
 
-        when(notaMapper.construirContenido(request)).thenReturn("Descripcion sin titulo pero valida");
         when(mlClient.analizar(anyString()))
                 .thenThrow(new MlServiceException("FastAPI no disponible"));
 
