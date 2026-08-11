@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class MlClient {
 
         validarRespuesta(response);
 
-        java.util.List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : java.util.List.of();
+        List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : List.of();
 
         return new MlResult(response.categoria(), response.probabilidad(), palabrasClave, response.tiempo_procesamiento_ms());
     }
