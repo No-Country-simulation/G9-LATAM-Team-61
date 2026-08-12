@@ -6,6 +6,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -35,6 +36,30 @@ public class MlClient {
         List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : List.of();
 
         return new MlResult(response.categoria(), response.probabilidad(), palabrasClave, response.tiempo_procesamiento_ms());
+    }
+
+    public List<FastApiResponse> analizarLote(List<String> textos) {
+        FastApiResponse[] responseArray;
+
+        try {
+            responseArray = fastApiClient.post()
+                    .uri("/predict/lote")
+                    .body(Map.of("textos", textos))
+                    .retrieve()
+                    .body(FastApiResponse[].class);
+        } catch (ResourceAccessException ex) {
+            throw new MlServiceTimeoutException("El servicio de análisis en lote no respondió a tiempo");
+        } catch (HttpStatusCodeException ex) {
+            throw new MlServiceException("El servicio de análisis devolvió un error: " + ex.getStatusCode());
+        } catch (org.springframework.web.client.RestClientException ex) {
+            throw new MlServiceException("Error de comunicación con el servicio de análisis en lote");
+        }
+
+        if (responseArray == null) {
+            throw new MlServiceException("FastAPI no devolvió respuesta para el análisis en lote");
+        }
+
+        return List.of(responseArray);
     }
 
     private void validarRespuesta(FastApiResponse response) {

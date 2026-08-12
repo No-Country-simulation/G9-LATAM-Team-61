@@ -1,9 +1,12 @@
 package com.g9_latam_team_61.backend.service;
 
+import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
 import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.LoteRequest;
+import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.mapper.NotaMapper;
@@ -15,9 +18,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.mock.web.MockMultipartFile;
+
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -70,6 +77,66 @@ class NotaServiceTest {
         assertEquals(expectedResponse, response);
         verify(mlClient).analizar("Descripcion con mas de 30 caracteres para testing completo");
         verify(notaRepository).save(notaSinGuardar);
+    }
+
+    @Test
+    void procesarLote_debeProcesarPayloadJsonExitosamente() {
+        LoteRequest request = new LoteRequest(List.of("Texto técnico 1", "Texto técnico 2"));
+
+        FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
+        FastApiResponse res2 = new FastApiResponse("Backend", 0.88, List.of("spring"), 3.5);
+
+        Nota n1 = new Nota();
+        n1.setId(1L);
+        n1.setContenidoOriginal("Texto técnico 1");
+
+        Nota n2 = new Nota();
+        n2.setId(2L);
+        n2.setContenidoOriginal("Texto técnico 2");
+
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
+        when(notaRepository.saveAll(anyList())).thenReturn(List.of(n1, n2));
+        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, "Texto técnico 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
+        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, "Texto técnico 2", "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
+
+        LoteResponse response = notaService.procesarLote(null, request);
+
+        assertEquals(2, response.archivosProcesados());
+        assertEquals(6.7, response.tiempoTotalMs());
+        assertEquals(2, response.resultados().size());
+        verify(notaRepository).saveAll(anyList());
+    }
+
+    @Test
+    void procesarLote_debeProcesarArchivoCsvExitosamente() {
+        String csvContent = "contenido\nTexto de prueba CSV 1\nTexto de prueba CSV 2\n";
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", csvContent.getBytes(StandardCharsets.UTF_8));
+
+        FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
+        FastApiResponse res2 = new FastApiResponse("Backend", 0.88, List.of("spring"), 3.5);
+
+        Nota n1 = new Nota();
+        n1.setId(1L);
+        n1.setContenidoOriginal("Texto de prueba CSV 1");
+
+        Nota n2 = new Nota();
+        n2.setId(2L);
+        n2.setContenidoOriginal("Texto de prueba CSV 2");
+
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
+        when(notaRepository.saveAll(anyList())).thenReturn(List.of(n1, n2));
+        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, "Texto de prueba CSV 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
+        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, "Texto de prueba CSV 2", "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
+
+        LoteResponse response = notaService.procesarLote(file, null);
+
+        assertEquals(2, response.archivosProcesados());
+        verify(notaRepository).saveAll(anyList());
+    }
+
+    @Test
+    void procesarLote_debeLanzarExcepcion_siNoSeProveenEntradas() {
+        assertThrows(IllegalArgumentException.class, () -> notaService.procesarLote(null, null));
     }
 
     @Test

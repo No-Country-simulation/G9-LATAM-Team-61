@@ -1,0 +1,21 @@
+meta {
+  name: Analizar Lote (JSON)
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:8080/api/contenido/lote
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "textos": [
+      "Configuración de balanceadores de carga en OCI usando Docker y Kubernetes.",
+      "Patrones de diseño reactivos con RxJava y Spring WebFlux.",
+      "Automatización de pipelines CI/CD con GitHub Actions."
+    ]
+  }
+}

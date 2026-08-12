@@ -3,6 +3,8 @@ package com.g9_latam_team_61.backend.controller;
 import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.client.MlServiceTimeoutException;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.LoteRequest;
+import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.service.NotaService;
@@ -14,15 +16,18 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -54,6 +59,47 @@ class NotaControllerTest {
                 .andExpect(jsonPath("$.categoria").value("DevOps"))
                 .andExpect(jsonPath("$.probabilidad").value(0.94))
                 .andExpect(jsonPath("$.tiempoProcesamientoMs").value(32.5));
+    }
+
+    @Test
+    void analizarLote_debeRetornar201_conPayloadJsonValido() throws Exception {
+        LoteRequest request = new LoteRequest(List.of("Texto 1", "Texto 2"));
+        NotaResponse n1 = new NotaResponse(1L, "Texto 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        LoteResponse response = new LoteResponse(2, 6.4, 3.2, List.of(n1));
+
+        when(notaService.procesarLote(isNull(), any(LoteRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.archivos_procesados").value(2))
+                .andExpect(jsonPath("$.tiempo_total_ms").value(6.4));
+    }
+
+    @Test
+    void analizarLote_debeRetornar201_conArchivoCsvValido() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", "contenido\nTexto 1\n".getBytes(StandardCharsets.UTF_8));
+        NotaResponse n1 = new NotaResponse(1L, "Texto 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        LoteResponse response = new LoteResponse(1, 3.2, 3.2, List.of(n1));
+
+        when(notaService.procesarLote(any(), isNull())).thenReturn(response);
+
+        mockMvc.perform(multipart("/api/contenido/lote")
+                        .file(file))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.archivos_procesados").value(1));
+    }
+
+    @Test
+    void analizarLote_debeRetornar400_cuandoListaTextosEsVaciaEnJson() throws Exception {
+        LoteRequest requestInvalido = new LoteRequest(List.of());
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(requestInvalido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
