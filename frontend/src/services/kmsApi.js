@@ -6,25 +6,9 @@ export const DEFAULT_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://loca
 export const IS_MOCK_MODE =
   import.meta.env.VITE_ENABLE_DEMO === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
 
-export const INITIAL_DOCUMENTS = [
-  { id: 1, title: 'Manejo de errores JWT', category: 'Backend', badgeClass: 'backend', tags: 'spring, auth, token', date: 'Hoy, 14:30' },
-  { id: 2, title: 'Guía useEffect React', category: 'Frontend', badgeClass: 'frontend', tags: 'react, hooks', date: 'Hoy, 10:15' },
-  { id: 3, title: 'Balanceador en OCI', category: 'DevOps', badgeClass: 'devops', tags: 'oci, network', date: 'Ayer, 18:45' },
-  { id: 4, title: 'Estructura de BD PostgreSQL', category: 'Backend', badgeClass: 'backend', tags: 'sql, schema', date: 'Ayer, 11:20' },
-  { id: 5, title: 'CI/CD Actions YAML', category: 'DevOps', badgeClass: 'devops', tags: 'github, deploy', date: '17 Jul, 09:10' },
-  { id: 6, title: 'Optimización de Vite.js', category: 'Frontend', badgeClass: 'frontend', tags: 'vite, build', date: '16 Jul, 16:05' }
-];
+export const INITIAL_DOCUMENTS = [];
 
-export const INITIAL_CLUSTERS = [
-  { id: 0, title: 'Grupo 0: Fallos Red y OCI (Demo)', docsCount: 124, tags: 'oci, subnet, dns' },
-  { id: 1, title: 'Grupo 1: Seguridad & JWT (Demo)', docsCount: 89, tags: 'auth, token, bearer' },
-  { id: 2, title: 'Grupo 2: React State & Hooks (Demo)', docsCount: 142, tags: 'react, useeffect, props' },
-  { id: 3, title: 'Grupo 3: Docker & Pipelines (Demo)', docsCount: 98, tags: 'docker, compose, yaml' },
-  { id: 4, title: 'Grupo 4: Spring Data JPA (Demo)', docsCount: 110, tags: 'entity, repository, postgres' },
-  { id: 5, title: 'Grupo 5: Python & FastAPI (Demo)', docsCount: 76, tags: 'uvicorn, pydantic, joblib' },
-  { id: 6, title: 'Grupo 6: ML & Scikit-Learn (Demo)', docsCount: 65, tags: 'vectorizer, kmeans, score' },
-  { id: 7, title: 'Grupo 7: Nginx & SSL (Demo)', docsCount: 50, tags: 'certbot, proxy, port' }
-];
+export const INITIAL_CLUSTERS = [];
 
 export function sanitizeInput(str) {
   if (typeof str !== 'string') return '';
@@ -100,11 +84,13 @@ export async function fetchHistory(categoria = '', page = 0, size = 10, apiUrl =
 
         return {
           id: item.id,
-          title: item.titulo || 'Sin Título',
+          content: item.contenidoOriginal || '',
+          title: inferTitleFromContent(item.contenidoOriginal || ''),
           category,
           badgeClass,
           confidence,
           tags,
+          latencyMs: item.tiempoProcesamientoMs || null,
           date: formattedDate,
           isLiveApi: true,
         };
@@ -130,7 +116,11 @@ export async function fetchStats(apiUrl = DEFAULT_API_URL) {
   try {
     const response = await fetch(`${apiUrl}/contenido/stats`);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return {
+        ...data,
+        totalDocumentos: data.totalIndexados !== undefined ? data.totalIndexados : data.totalDocumentos,
+      };
     }
   } catch (err) {
     console.warn('Error obteniendo estadísticas reales:', err);
@@ -140,17 +130,17 @@ export async function fetchStats(apiUrl = DEFAULT_API_URL) {
 
 /**
  * Single Text Classification (POST /api/contenido)
- * Contrato estricto DTO: Envía únicamente { titulo, descripcion }
+ * Contrato estricto DTO Backend: Envía únicamente { descripcion } con validación de 30 a 5000 caracteres
  */
 export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_URL, forceDemoMode = IS_MOCK_MODE) {
   const contentText = (content || '').trim();
   
-  if (contentText.length < 10) {
-    throw new Error('El contenido debe tener al menos 10 caracteres.');
+  if (contentText.length < 30) {
+    throw new Error('El contenido debe tener al menos 30 caracteres.');
   }
 
-  if (contentText.length > 10000) {
-    throw new Error('El contenido excede el límite máximo permitido de 10,000 caracteres.');
+  if (contentText.length > 5000) {
+    throw new Error('El contenido excede el límite máximo permitido de 5,000 caracteres.');
   }
 
   const docTitle = (title || '').trim().slice(0, 500) || inferTitleFromContent(contentText);
@@ -161,7 +151,7 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
   }
 
   // MODO REAL: Petición HTTP a Spring Boot con Timeout de 10 segundos
-  const sanitizedContent = contentText.slice(0, 10000);
+  const sanitizedContent = contentText.slice(0, 5000);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -171,7 +161,6 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        titulo: docTitle,
         descripcion: sanitizedContent,
       }),
       signal: controller.signal,
@@ -198,11 +187,13 @@ export async function classifyContent({ title, content }, apiUrl = DEFAULT_API_U
 
     return {
       id: data.id_registro || data.id || Date.now(),
-      title: docTitle,
+      title: inferTitleFromContent(data.contenidoOriginal || sanitizedContent),
+      content: data.contenidoOriginal || sanitizedContent,
       category,
       badgeClass,
       confidence,
       tags,
+      latencyMs: data.tiempoProcesamientoMs || null,
       date: 'Hace un momento',
       isLiveApi: true,
     };
@@ -263,43 +254,260 @@ async function executeLocalMockClassification(docTitle, contentText) {
 }
 
 /**
- * Endpoint 3: Bulk Batch Classification (Simulación Demo / Próximamente)
+ * Search in Persisted Knowledge (GET /api/buscar?q=...)
  */
-export async function processBatchContent(batchArray, apiUrl = DEFAULT_API_URL) {
+export async function searchContent(query, apiUrl = DEFAULT_API_URL) {
+  const cleanQuery = (query || '').trim();
+  if (!cleanQuery) return null;
+
+  if (IS_MOCK_MODE) {
+    const q = cleanQuery.toLowerCase();
+    return INITIAL_DOCUMENTS.filter(
+      (d) =>
+        d.title.toLowerCase().includes(q) ||
+        d.category.toLowerCase().includes(q) ||
+        d.tags.toLowerCase().includes(q)
+    );
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/buscar?q=${encodeURIComponent(cleanQuery)}`);
+    if (response.ok) {
+      const data = await response.json();
+      return (data || []).map((item) => {
+        const category = item.categoria || 'Otros';
+        const badgeClass = category.toLowerCase().replace(/\s+/g, '');
+        const rawProb = item.probabilidad !== undefined ? item.probabilidad : 0.0;
+        const confidence = `${(rawProb * 100).toFixed(1)}%`;
+        const rawTags = item.palabrasClave || item.palabras_clave || [];
+        const tags = Array.isArray(rawTags) ? rawTags.join(', ') : String(rawTags);
+
+        let formattedDate = 'Reciente';
+        if (item.fechaAnalisis) {
+          try {
+            const d = new Date(item.fechaAnalisis);
+            formattedDate = d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+          } catch {
+            formattedDate = 'Reciente';
+          }
+        }
+
+        return {
+          id: item.id,
+          content: item.contenidoOriginal || '',
+          title: inferTitleFromContent(item.contenidoOriginal || ''),
+          category,
+          badgeClass,
+          confidence,
+          tags,
+          latencyMs: item.tiempoProcesamientoMs || null,
+          date: formattedDate,
+          isLiveApi: true,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('Error en búsqueda semántica de Spring Boot:', err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Similar Recommendations for a Note (GET /api/contenido/{id}/recomendados)
+ */
+export async function fetchRecommendations(id, apiUrl = DEFAULT_API_URL) {
+  if (!id) return [];
+  if (IS_MOCK_MODE) {
+    return INITIAL_DOCUMENTS.filter((d) => d.id !== id).slice(0, 3);
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/contenido/${id}/recomendados`);
+    if (response.ok) {
+      const data = await response.json();
+      return (data || []).map((item) => {
+        const category = item.categoria || 'Otros';
+        const badgeClass = category.toLowerCase().replace(/\s+/g, '');
+        const rawProb = item.probabilidad !== undefined ? item.probabilidad : 0.0;
+        const confidence = `${(rawProb * 100).toFixed(1)}%`;
+        const rawTags = item.palabrasClave || item.palabras_clave || [];
+        const tags = Array.isArray(rawTags) ? rawTags.join(', ') : String(rawTags);
+
+        return {
+          id: item.id,
+          content: item.contenidoOriginal || '',
+          title: inferTitleFromContent(item.contenidoOriginal || ''),
+          category,
+          badgeClass,
+          confidence,
+          tags,
+          latencyMs: item.tiempoProcesamientoMs || null,
+          date: 'Relacionado',
+          isLiveApi: true,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('Error obteniendo recomendaciones:', err);
+  }
+  return [];
+}
+
+/**
+ * Fetch Categories dynamic count (GET /api/categorias)
+ */
+export async function fetchCategories(apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) {
+    return [
+      { categoria: 'DevOps', total: 3 },
+      { categoria: 'Backend', total: 3 },
+      { categoria: 'Frontend', total: 2 },
+      { categoria: 'Otros', total: 1 },
+    ];
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/categorias`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.warn('Error obteniendo conteo de categorías:', err);
+  }
+  return [];
+}
+
+/**
+ * Send User Feedback / Correction (POST /api/contenido/{id}/feedback)
+ */
+export async function sendFeedback(id, { categoriaSugerida, comentario = '' }, apiUrl = DEFAULT_API_URL) {
+  if (!id || !categoriaSugerida) {
+    throw new Error('ID y categoría sugerida son obligatorios para enviar feedback');
+  }
+
+  if (IS_MOCK_MODE) {
+    return { id, categoria: categoriaSugerida, feedbackUsuario: comentario || 'Categoría corregida' };
+  }
+
+  const response = await fetch(`${apiUrl}/contenido/${id}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      categoriaSugerida,
+      comentario: comentario || `Categoría corregida a ${categoriaSugerida}`,
+    }),
+  });
+
+  if (response.ok) {
+    return await response.json();
+  }
+
+  throw new Error(`HTTP ${response.status}: No se pudo registrar el feedback.`);
+}
+
+/**
+ * Bulk Batch Classification (POST /api/contenido/lote)
+ */
+export async function uploadBatchLote(textList, apiUrl = DEFAULT_API_URL) {
+  if (!textList || textList.length === 0) {
+    throw new Error('Debe proporcionar una lista de textos para procesar por lotes.');
+  }
+
+  if (IS_MOCK_MODE) {
+    await new Promise((r) => setTimeout(r, 1200));
+    return {
+      archivos_procesados: textList.length,
+      tiempo_total_ms: 1250.0,
+      tiempo_promedio_por_texto_ms: 1250.0 / textList.length,
+      resultados: textList.map((t, idx) => ({
+        id: Date.now() + idx,
+        contenidoOriginal: t,
+        categoria: 'Backend',
+        probabilidad: 0.92,
+        palabrasClave: ['batch', 'demo'],
+        tiempoProcesamientoMs: 50.0,
+      })),
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for batch
+
   try {
     const response = await fetch(`${apiUrl}/contenido/lote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ textos: batchArray }),
+      body: JSON.stringify({ textos: textList }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       return await response.json();
     }
-  } catch (error) {
-    console.warn('Endpoint /contenido/lote en desarrollo. Ejecutando procesamiento en Modo Demo.', error);
-  }
 
-  return { archivos_procesados: batchArray.length || 2000, tiempo_total_ms: 250, isDemo: true };
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `HTTP ${response.status}: Error procesando el lote en Spring Boot.`);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Timeout: El procesamiento del lote superó los 60 segundos.');
+    }
+    throw err;
+  }
 }
 
 /**
- * Endpoint 4: Trigger K-Means Re-Clustering (Simulación Demo / Próximamente)
+ * Trigger K-Means Re-Clustering (POST /api/contenido/agrupar)
  */
-export async function triggerReclustering(apiUrl = DEFAULT_API_URL) {
-  try {
-    const response = await fetch(`${apiUrl}/contenido/agrupar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (error) {
-    console.warn('Endpoint /contenido/agrupar en desarrollo. Ejecutando recálculo en Modo Demo.', error);
+export async function triggerReclustering(nClusters = null, apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return {
+      n_clusters: 8,
+      n_documentos: 1204,
+      clusters: INITIAL_CLUSTERS,
+      tiempo_procesamiento_ms: 420.5,
+    };
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-  return { status: 'success', clusters: 8, isDemo: true };
+  const url = nClusters ? `${apiUrl}/contenido/agrupar?n_clusters=${nClusters}` : `${apiUrl}/contenido/agrupar`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      const mappedClusters = (data.clusters || []).map((c) => ({
+        id: c.id,
+        title: c.nombreSugerido || `Cluster ${c.id}`,
+        docsCount: c.totalDocumentos || 0,
+        tags: Array.isArray(c.palabrasClaveTop) ? c.palabrasClaveTop.slice(0, 6).join(', ') : '',
+        date: c.fechaGeneracion,
+      }));
+
+      return {
+        n_clusters: data.n_clusters || mappedClusters.length,
+        n_documentos: data.n_documentos || 0,
+        clusters: mappedClusters,
+        tiempo_procesamiento_ms: data.tiempo_procesamiento_ms,
+      };
+    }
+
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `HTTP ${response.status}: No se pudo ejecutar el clustering.`);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Timeout: El análisis de clustering excedió el tiempo límite.');
+    }
+    throw err;
+  }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/layout/Header';
 import Toast from './components/common/Toast';
 import DataInputForm from './components/classification/DataInputForm';
@@ -6,6 +6,7 @@ import ResultModal from './components/classification/ResultModal';
 import AnalyticsSearch from './components/dashboard/AnalyticsSearch';
 import RecentTable from './components/dashboard/RecentTable';
 import HistoryModal from './components/dashboard/HistoryModal';
+import RecommendedModal from './components/dashboard/RecommendedModal';
 import ClusterWidget from './components/clustering/ClusterWidget';
 import ClustersModal from './components/clustering/ClustersModal';
 import UploadModal from './components/bulk/UploadModal';
@@ -17,6 +18,12 @@ import {
   checkBackendHealth,
   fetchHistory,
   fetchStats,
+  fetchCategories,
+  searchContent,
+  triggerReclustering,
+  uploadBatchLote,
+  sendFeedback,
+  fetchRecommendations,
   INITIAL_DOCUMENTS,
   INITIAL_CLUSTERS,
 } from './services/kmsApi';
@@ -24,16 +31,26 @@ import './App.css';
 
 export function App() {
   const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
-  const [clusters] = useState(INITIAL_CLUSTERS);
-  const [totalCount, setTotalCount] = useState(1204);
+  const [clusters, setClusters] = useState(INITIAL_CLUSTERS);
+  const [stats, setStats] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [isSearching, setIsSearching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isReclustering, setIsReclustering] = useState(false);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
   const [isApiLive, setIsApiLive] = useState(false);
 
   const [activeModal, setActiveModal] = useState(null);
   const [resultData, setResultData] = useState(null);
+
+  // Recommendations state
+  const [recommendedBaseDoc, setRecommendedBaseDoc] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   const toastTimerRef = React.useRef(null);
 
@@ -43,27 +60,50 @@ export function App() {
     type: 'info',
   });
 
-  // Check API Connection status & fetch real persisted history on mount
-  useEffect(() => {
-    async function initData() {
-      const isAlive = await checkBackendHealth();
-      setIsApiLive(isAlive);
+  const showToast = (message, type = 'info') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastState({ visible: true, message, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToastState((prev) => ({ ...prev, visible: false }));
+    }, 4000);
+  };
 
-      if (isAlive) {
-        const historyData = await fetchHistory();
-        if (historyData && historyData.items && historyData.items.length > 0) {
-          setDocuments(historyData.items);
-          setTotalCount(historyData.totalElements);
-        }
+  const handleCloseToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastState((prev) => ({ ...prev, visible: false }));
+  };
 
-        const stats = await fetchStats();
-        if (stats && stats.totalDocumentos !== undefined) {
-          setTotalCount(stats.totalDocumentos);
-        }
+  const reloadDashboardData = useCallback(async (cat = '') => {
+    const isAlive = await checkBackendHealth();
+    setIsApiLive(isAlive);
+
+    if (isAlive) {
+      const [historyData, statsData, catsData] = await Promise.all([
+        fetchHistory(cat),
+        fetchStats(),
+        fetchCategories(),
+      ]);
+
+      if (historyData && historyData.items) {
+        setDocuments(historyData.items);
+      }
+      if (statsData) {
+        setStats(statsData);
+      }
+      if (catsData) {
+        setCategories(catsData);
       }
     }
-    initData();
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    reloadDashboardData();
+  }, [reloadDashboardData]);
 
   // ESC key listener to close modals
   useEffect(() => {
@@ -76,26 +116,10 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeModal]);
 
-  const showToast = (message, type = 'info') => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToastState({ visible: true, message, type });
-    toastTimerRef.current = setTimeout(() => {
-      setToastState((prev) => ({ ...prev, visible: false }));
-    }, 3500);
-  };
-
-  const handleCloseToast = () => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToastState((prev) => ({ ...prev, visible: false }));
-  };
-
+  // 1. Single classification handler
   const handleClassify = async (formData) => {
     if (!formData || !formData.content) {
-      showToast('Por favor ingresa al menos el contenido crudo a clasificar', 'error');
+      showToast('Por favor ingresa el contenido a clasificar', 'error');
       return false;
     }
 
@@ -106,40 +130,134 @@ export function App() {
       setIsProcessing(false);
 
       setDocuments((prev) => [result, ...prev]);
-      setTotalCount((prev) => prev + 1);
       setResultData(result);
       setActiveModal('result');
 
+      // Refresh stats & categories
+      reloadDashboardData(selectedCategory);
+
       if (result.isLiveApi) {
-        showToast('¡Documento clasificado en vivo por Spring Boot!', 'success');
+        showToast('¡Documento clasificado e indexado en PostgreSQL!', 'success');
       } else {
-        showToast('¡Documento clasificado e indexado (Modo Demo Local)!', 'success');
+        showToast('¡Documento clasificado (Modo Demo Local)!', 'success');
       }
       return true;
     } catch (err) {
       setIsProcessing(false);
-      showToast(err.message || 'Error en el servicio de clasificación de contenido', 'error');
+      showToast(err.message || 'Error en el servicio de clasificación', 'error');
       return false;
     }
   };
 
-  const handleRecluster = () => {
-    setIsReclustering(true);
-    setTimeout(() => {
-      setIsReclustering(false);
-      showToast('Algoritmo K-Means re-ejecutado. 8 Clusters actualizados.', 'success');
-    }, 1200);
+  // 2. Real-time Semantic Search handler
+  const handlePerformSearch = async (query) => {
+    const cleanQ = (query || '').trim();
+    if (!cleanQ) {
+      // Reset back to category/full history
+      const historyData = await fetchHistory(selectedCategory);
+      if (historyData && historyData.items) {
+        setDocuments(historyData.items);
+      }
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const searchResults = await searchContent(cleanQ);
+      setDocuments(searchResults);
+      if (searchResults.length > 0) {
+        showToast(`Se encontraron ${searchResults.length} notas por similitud semántica.`, 'info');
+      } else {
+        showToast(`No se encontraron notas con el término "${cleanQ}".`, 'info');
+      }
+    } catch (err) {
+      showToast('Error ejecutando búsqueda semántica', 'error');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleProcessBatch = (count = 2000) => {
-    showToast(`Lote de ${count.toLocaleString()} registros enviado a FastAPI. Procesando en segundo plano...`, 'success');
-    setTimeout(() => {
-      setTotalCount((prev) => prev + count);
-    }, 1000);
+  // 3. Category Filter handler
+  const handleSelectCategory = async (cat) => {
+    setSelectedCategory(cat);
+    setSearchQuery('');
+    const historyData = await fetchHistory(cat);
+    if (historyData && historyData.items) {
+      setDocuments(historyData.items);
+    }
+  };
+
+  // 4. K-Means Clustering handler
+  const handleRecluster = async () => {
+    setIsReclustering(true);
+    try {
+      const clusterResult = await triggerReclustering();
+      if (clusterResult && clusterResult.clusters && clusterResult.clusters.length > 0) {
+        setClusters(clusterResult.clusters);
+        showToast(`¡K-Means completado! ${clusterResult.clusters.length} clusters generados (${clusterResult.tiempo_procesamiento_ms || 400} ms).`, 'success');
+      } else {
+        showToast('K-Means ejecutado correctamente.', 'success');
+      }
+      reloadDashboardData(selectedCategory);
+    } catch (err) {
+      showToast(err.message || 'Error al ejecutar agrupamiento K-Means', 'error');
+    } finally {
+      setIsReclustering(false);
+    }
+  };
+
+  // 5. Bulk Upload batch handler
+  const handleProcessBatch = async (textsArray) => {
+    setIsProcessingBatch(true);
+    try {
+      const result = await uploadBatchLote(textsArray);
+      setIsProcessingBatch(false);
+      showToast(`¡Lote de ${textsArray.length} notas indexado correctamente en PostgreSQL!`, 'success');
+      reloadDashboardData(selectedCategory);
+      return result;
+    } catch (err) {
+      setIsProcessingBatch(false);
+      showToast(err.message || 'Error procesando lote de notas', 'error');
+      return null;
+    }
+  };
+
+  // 6. User Feedback handler
+  const handleSendFeedback = async (id, categoriaSugerida, comentario) => {
+    setIsSendingFeedback(true);
+    try {
+      await sendFeedback(id, { categoriaSugerida, comentario });
+      setIsSendingFeedback(false);
+      showToast(`Retroalimentación guardada: Nota #${id} clasificada como ${categoriaSugerida}.`, 'success');
+      reloadDashboardData(selectedCategory);
+      return true;
+    } catch (err) {
+      setIsSendingFeedback(false);
+      showToast(err.message || 'Error al enviar feedback', 'error');
+      return false;
+    }
+  };
+
+  // 7. Recommendations handler
+  const handleViewRecommendations = async (doc) => {
+    setRecommendedBaseDoc(doc);
+    setIsLoadingRecommendations(true);
+    setActiveModal('recommended');
+
+    try {
+      const recs = await fetchRecommendations(doc.id);
+      setRecommendations(recs);
+    } catch (err) {
+      showToast('No se pudieron obtener recomendaciones para este documento', 'error');
+      setRecommendations([]);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
   };
 
   const handleSaveConfig = () => {
-    showToast('Configuraciones guardadas correctamente', 'success');
+    showToast('Configuración actualizada correctamente', 'success');
+    reloadDashboardData();
   };
 
   return (
@@ -148,7 +266,7 @@ export function App() {
       <Toast toastState={toastState} onClose={handleCloseToast} />
 
       <main className="main-content">
-        {/* Top Bar Header (Fase 1 + Fase 6 Status) */}
+        {/* Top Bar Header */}
         <Header
           onOpenConfig={() => setActiveModal('config')}
           onOpenApiDocs={() => setActiveModal('api')}
@@ -166,7 +284,14 @@ export function App() {
           <AnalyticsSearch
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            totalCount={totalCount}
+            onPerformSearch={handlePerformSearch}
+            isSearching={isSearching}
+            totalCount={documents.length}
+            stats={stats}
+            clustersCount={clusters.length}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
           />
         </div>
 
@@ -176,6 +301,7 @@ export function App() {
             documents={documents}
             searchQuery={searchQuery}
             onOpenHistory={() => setActiveModal('history')}
+            onViewRecommendations={handleViewRecommendations}
           />
 
           <ClusterWidget
@@ -183,21 +309,33 @@ export function App() {
             isReclustering={isReclustering}
             onRecluster={handleRecluster}
             onOpenClusters={() => setActiveModal('clusters')}
+            isApiLive={isApiLive}
           />
         </section>
       </main>
 
-      {/* Modals de la Aplicación */}
+      {/* Modales de la Aplicación */}
       <ResultModal
         isOpen={activeModal === 'result'}
         onClose={() => setActiveModal(null)}
         resultData={resultData}
+        onSendFeedback={handleSendFeedback}
+        isSendingFeedback={isSendingFeedback}
       />
 
       <HistoryModal
         isOpen={activeModal === 'history'}
         onClose={() => setActiveModal(null)}
         documents={documents}
+        onViewRecommendations={handleViewRecommendations}
+      />
+
+      <RecommendedModal
+        isOpen={activeModal === 'recommended'}
+        onClose={() => setActiveModal(null)}
+        baseDocument={recommendedBaseDoc}
+        recommendations={recommendations}
+        isLoading={isLoadingRecommendations}
       />
 
       <ClustersModal
@@ -210,6 +348,7 @@ export function App() {
         isOpen={activeModal === 'upload'}
         onClose={() => setActiveModal(null)}
         onProcessBatch={handleProcessBatch}
+        isProcessingBatch={isProcessingBatch}
       />
 
       <ConfigModal

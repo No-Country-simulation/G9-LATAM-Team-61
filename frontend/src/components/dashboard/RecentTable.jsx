@@ -5,14 +5,15 @@ import Card from '../common/Card';
 /**
  * Recent Processed Documents Table Component (Últimos Procesados - Phase 4)
  */
-export function RecentTable({ documents, searchQuery, onOpenHistory }) {
-  const filteredDocs = documents.filter((doc) => {
+export function RecentTable({ documents, searchQuery, onOpenHistory, onViewRecommendations }) {
+  const filteredDocs = (documents || []).filter((doc) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      doc.title.toLowerCase().includes(q) ||
-      doc.category.toLowerCase().includes(q) ||
-      doc.tags.toLowerCase().includes(q)
+      (doc.content && doc.content.toLowerCase().includes(q)) ||
+      (doc.title && doc.title.toLowerCase().includes(q)) ||
+      (doc.category && doc.category.toLowerCase().includes(q)) ||
+      (doc.tags && doc.tags.toLowerCase().includes(q))
     );
   });
 
@@ -40,32 +41,46 @@ export function RecentTable({ documents, searchQuery, onOpenHistory }) {
           style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)' }}
           onClick={onOpenHistory}
         >
-          Ver todos
+          Ver todos ({documents.length})
         </button>
       </h2>
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <table>
           <thead style={{ background: 'var(--bg-app)' }}>
             <tr>
-              <th>TÍTULO</th>
+              <th>EXTRACTO / CONTENIDO</th>
               <th>CATEGORÍA</th>
               <th>TAGS (TF-IDF)</th>
+              <th style={{ textAlign: 'right', paddingRight: '1rem' }}>ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="recent-tbody">
             {recentDocs.length > 0 ? (
               recentDocs.map((doc) => (
                 <tr key={doc.id} className="fade-in">
-                  <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{doc.title}</td>
+                  <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.content || doc.title}>
+                    {doc.content ? (doc.content.length > 55 ? doc.content.slice(0, 55) + '...' : doc.content) : doc.title}
+                  </td>
                   <td>
                     <Badge category={doc.category}>{doc.category}</Badge>
                   </td>
                   <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
+                  <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                      onClick={() => onViewRecommendations && onViewRecommendations(doc)}
+                      title="Ver documentos recomendados afines"
+                    >
+                      Similares
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
                   No se encontraron documentos coincidentes
                 </td>
               </tr>
