@@ -2,6 +2,7 @@ package com.g9_latam_team_61.backend.service;
 
 import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
 import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
+import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
@@ -9,6 +10,8 @@ import com.g9_latam_team_61.backend.dto.AgruparResponse;
 import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.ClusterResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.FeedbackRequest;
+import com.g9_latam_team_61.backend.dto.HealthResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
@@ -26,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -155,6 +160,44 @@ public class NotaService {
         );
     }
 
+    public NotaResponse registrarFeedback(Long id, FeedbackRequest request) {
+        Nota nota = notaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("La nota especificada no existe"));
+
+        String comentario = (request.comentario() != null && !request.comentario().isBlank())
+                ? request.comentario()
+                : "Categoría corregida a " + request.categoriaSugerida();
+
+        nota.setCategoria(request.categoriaSugerida());
+        nota.setFeedbackUsuario(comentario);
+
+        Nota notaGuardada = notaRepository.save(nota);
+        return notaMapper.toResponse(notaGuardada);
+    }
+
+    public HealthResponse verificarSaludSistema() {
+        Map<String, Object> componentes = new LinkedHashMap<>();
+
+        boolean dbUp = false;
+        try {
+            notaRepository.count();
+            dbUp = true;
+            componentes.put("base_datos", "UP");
+        } catch (Exception ex) {
+            componentes.put("base_datos", "DOWN");
+        }
+
+        FastApiHealthResponse mlHealth = mlClient.verificarSalud();
+        boolean mlUp = "ok".equalsIgnoreCase(mlHealth.status());
+        componentes.put("fastapi_ml", Map.of(
+                "status", mlUp ? "UP" : "DOWN",
+                "modelo_cargado", Boolean.TRUE.equals(mlHealth.model_loaded())
+        ));
+
+        String statusGlobal = (dbUp && mlUp) ? "UP" : "DOWN";
+        return new HealthResponse(statusGlobal, componentes);
+    }
+
     public List<NotaResponse> buscar(String query) {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("El parámetro de búsqueda no puede estar vacío");
@@ -195,12 +238,19 @@ public class NotaService {
     public EstadisticasResponse obtenerEstadisticas() {
         long total = notaRepository.count();
         Double precisionPromedio = notaRepository.findConfianzaPromedio();
+        Double latenciaPromedio = notaRepository.findLatenciaPromedio();
+        long totalFeedback = notaRepository.countByFeedbackUsuarioIsNotNull();
+        List<CategoriaConteoResponse> categorias = notaRepository.contarNotasPorCategoria();
 
         Double confianzaRedondeada = precisionPromedio != null
                 ? Math.round(precisionPromedio * 10000.0) / 10000.0
                 : null;
 
-        return new EstadisticasResponse(total, confianzaRedondeada);
+        Double latenciaRedondeada = latenciaPromedio != null
+                ? Math.round(latenciaPromedio * 100.0) / 100.0
+                : null;
+
+        return new EstadisticasResponse(total, confianzaRedondeada, latenciaRedondeada, totalFeedback, categorias);
     }
 
     private void validarPageable(Pageable pageable) {

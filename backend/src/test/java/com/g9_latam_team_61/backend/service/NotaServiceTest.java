@@ -2,6 +2,7 @@ package com.g9_latam_team_61.backend.service;
 
 import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
 import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
+import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
@@ -9,6 +10,8 @@ import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.dto.AgruparResponse;
 import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.FeedbackRequest;
+import com.g9_latam_team_61.backend.dto.HealthResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
@@ -29,6 +32,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -87,6 +92,32 @@ class NotaServiceTest {
         assertEquals(expectedResponse, response);
         verify(mlClient).analizar("Descripcion con mas de 30 caracteres para testing completo");
         verify(notaRepository).save(notaSinGuardar);
+    }
+
+    @Test
+    void registrarFeedback_debeActualizarCategoriaYGuardarFeedback() {
+        Nota nota = new Nota(); nota.setId(1L); nota.setCategoria("DevOps");
+        FeedbackRequest request = new FeedbackRequest("Backend", "Corregido a backend");
+
+        when(notaRepository.findById(1L)).thenReturn(Optional.of(nota));
+        when(notaRepository.save(any(Nota.class))).thenAnswer(i -> i.getArgument(0));
+        when(notaMapper.toResponse(any())).thenReturn(new NotaResponse(1L, "Texto", "Backend", 0.9, List.of(), LocalDateTime.now(), 10.0));
+
+        NotaResponse response = notaService.registrarFeedback(1L, request);
+
+        assertEquals("Backend", response.categoria());
+        verify(notaRepository).save(nota);
+    }
+
+    @Test
+    void verificarSaludSistema_debeRetornarEstadoUp_cuandoComponentesEstanActivos() {
+        when(notaRepository.count()).thenReturn(5L);
+        when(mlClient.verificarSalud()).thenReturn(new FastApiHealthResponse("ok", true));
+
+        HealthResponse health = notaService.verificarSaludSistema();
+
+        assertEquals("UP", health.status());
+        assertEquals("UP", health.componentes().get("base_datos"));
     }
 
     @Test
@@ -244,22 +275,32 @@ class NotaServiceTest {
     void obtenerEstadisticas_debeCalcularTotalYPromedio() {
         when(notaRepository.count()).thenReturn(5L);
         when(notaRepository.findConfianzaPromedio()).thenReturn(0.912345);
+        when(notaRepository.findLatenciaPromedio()).thenReturn(25.555);
+        when(notaRepository.countByFeedbackUsuarioIsNotNull()).thenReturn(2L);
+        when(notaRepository.contarNotasPorCategoria()).thenReturn(List.of(new CategoriaConteoResponse("DevOps", 5)));
 
         EstadisticasResponse response = notaService.obtenerEstadisticas();
 
         assertEquals(5L, response.totalIndexados());
         assertEquals(0.9123, response.confianzaPromedio());
+        assertEquals(25.56, response.latenciaPromedioMs());
+        assertEquals(2L, response.totalFeedback());
     }
 
     @Test
     void obtenerEstadisticas_debeManejarBaseDatosVacia() {
         when(notaRepository.count()).thenReturn(0L);
         when(notaRepository.findConfianzaPromedio()).thenReturn(null);
+        when(notaRepository.findLatenciaPromedio()).thenReturn(null);
+        when(notaRepository.countByFeedbackUsuarioIsNotNull()).thenReturn(0L);
+        when(notaRepository.contarNotasPorCategoria()).thenReturn(List.of());
 
         EstadisticasResponse response = notaService.obtenerEstadisticas();
 
         assertEquals(0L, response.totalIndexados());
         assertNull(response.confianzaPromedio());
+        assertNull(response.latenciaPromedioMs());
+        assertEquals(0L, response.totalFeedback());
     }
 
     @Test

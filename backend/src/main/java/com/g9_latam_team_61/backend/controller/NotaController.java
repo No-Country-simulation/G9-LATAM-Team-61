@@ -3,6 +3,8 @@ package com.g9_latam_team_61.backend.controller;
 import com.g9_latam_team_61.backend.dto.AgruparResponse;
 import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.FeedbackRequest;
+import com.g9_latam_team_61.backend.dto.HealthResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
@@ -52,6 +54,21 @@ public class NotaController {
     @PostMapping("/contenido/agrupar")
     public ResponseEntity<AgruparResponse> agruparContenido(@RequestParam(value = "n_clusters", required = false) Integer nClusters) {
         AgruparResponse response = notaService.agruparContenido(nClusters);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/contenido/{id}/feedback")
+    public ResponseEntity<NotaResponse> registrarFeedback(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody FeedbackRequest request
+    ) {
+        NotaResponse response = notaService.registrarFeedback(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<HealthResponse> verificarSalud() {
+        HealthResponse response = notaService.verificarSaludSistema();
         return ResponseEntity.ok(response);
     }
 

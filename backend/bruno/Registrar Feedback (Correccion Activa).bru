@@ -1,0 +1,18 @@
+meta {
+  name: Registrar Feedback (Correccion Activa)
+  type: http
+  seq: 12
+}
+
+post {
+  url: http://localhost:8080/api/contenido/1/feedback
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "categoriaSugerida": "Backend",
+    "comentario": "El texto trata sobre Spring Boot, no sobre DevOps"
+  }
+}

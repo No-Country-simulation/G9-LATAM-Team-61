@@ -6,6 +6,8 @@ import com.g9_latam_team_61.backend.dto.AgruparResponse;
 import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.ClusterResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
+import com.g9_latam_team_61.backend.dto.FeedbackRequest;
+import com.g9_latam_team_61.backend.dto.HealthResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
@@ -26,6 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -62,6 +65,31 @@ class NotaControllerTest {
                 .andExpect(jsonPath("$.categoria").value("DevOps"))
                 .andExpect(jsonPath("$.probabilidad").value(0.94))
                 .andExpect(jsonPath("$.tiempoProcesamientoMs").value(32.5));
+    }
+
+    @Test
+    void registrarFeedback_debeRetornar200_conCategoriaActualizada() throws Exception {
+        FeedbackRequest request = new FeedbackRequest("Backend", "Es backend");
+        NotaResponse response = new NotaResponse(1L, "Texto", "Backend", 0.9, List.of(), LocalDateTime.now(), 10.0);
+
+        when(notaService.registrarFeedback(eq(1L), any(FeedbackRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido/1/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoria").value("Backend"));
+    }
+
+    @Test
+    void verificarSalud_debeRetornar200_conEstadoComponentes() throws Exception {
+        HealthResponse response = new HealthResponse("UP", Map.of("base_datos", "UP"));
+        when(notaService.verificarSaludSistema()).thenReturn(response);
+
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.componentes.base_datos").value("UP"));
     }
 
     @Test
@@ -228,18 +256,20 @@ class NotaControllerTest {
 
     @Test
     void estadisticas_debeRetornarTotalYConfianza() throws Exception {
-        EstadisticasResponse response = new EstadisticasResponse(10L, 0.912);
+        EstadisticasResponse response = new EstadisticasResponse(10L, 0.912, 18.5, 2L, List.of());
         when(notaService.obtenerEstadisticas()).thenReturn(response);
 
         mockMvc.perform(get("/api/contenido/stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalIndexados").value(10))
-                .andExpect(jsonPath("$.confianzaPromedio").value(0.912));
+                .andExpect(jsonPath("$.confianzaPromedio").value(0.912))
+                .andExpect(jsonPath("$.latenciaPromedioMs").value(18.5))
+                .andExpect(jsonPath("$.totalFeedback").value(2));
     }
 
     @Test
     void estadisticas_debeManejarBaseDatosVacia() throws Exception {
-        EstadisticasResponse response = new EstadisticasResponse(0L, null);
+        EstadisticasResponse response = new EstadisticasResponse(0L, null, null, 0L, List.of());
         when(notaService.obtenerEstadisticas()).thenReturn(response);
 
         mockMvc.perform(get("/api/contenido/stats"))

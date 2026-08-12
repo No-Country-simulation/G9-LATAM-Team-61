@@ -2,9 +2,11 @@ package com.g9_latam_team_61.backend.controller;
 
 import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
 import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
+import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
+import com.g9_latam_team_61.backend.dto.FeedbackRequest;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.model.Nota;
@@ -77,6 +79,34 @@ class NotaIntegrationTest {
         assertEquals(descripcionOriginal, notas.get(0).getContenidoOriginal());
         assertNotNull(notas.get(0).getTiempoProcesamientoMs());
         assertEquals(32.5, notas.get(0).getTiempoProcesamientoMs());
+    }
+
+    @Test
+    void debeActualizarCategoriaEnPostgres_alRegistrarFeedback() throws Exception {
+        Nota nota = new Nota(); nota.setContenidoOriginal("Texto de prueba"); nota.setCategoria("DevOps"); nota.setProbabilidad(0.9);
+        Nota notaGuardada = notaRepository.save(nota);
+
+        FeedbackRequest request = new FeedbackRequest("Backend", "El texto trata sobre Spring Boot");
+
+        mockMvc.perform(post("/api/contenido/" + notaGuardada.getId() + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoria").value("Backend"));
+
+        Nota notaActualizada = notaRepository.findById(notaGuardada.getId()).orElseThrow();
+        assertEquals("Backend", notaActualizada.getCategoria());
+        assertEquals("El texto trata sobre Spring Boot", notaActualizada.getFeedbackUsuario());
+    }
+
+    @Test
+    void debeRetornarSaludConsolidadaDelSistema() throws Exception {
+        when(mlClient.verificarSalud()).thenReturn(new FastApiHealthResponse("ok", true));
+
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.componentes.base_datos").value("UP"));
     }
 
     @Test

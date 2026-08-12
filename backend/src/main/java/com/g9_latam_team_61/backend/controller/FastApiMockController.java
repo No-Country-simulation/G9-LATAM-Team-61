@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.controller;
 import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
 import com.g9_latam_team_61.backend.client.FastApiClusteringRequest;
 import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
+import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiRequest;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import org.springframework.context.annotation.Profile;
@@ -15,6 +16,20 @@ import java.util.Map;
 @Profile({"local", "test"})
 @RestController
 public class FastApiMockController {
+
+    @GetMapping("/health")
+    public ResponseEntity<FastApiHealthResponse> mockHealth() {
+        return ResponseEntity.ok(new FastApiHealthResponse("ok", true));
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<Map<String, String>> mockRoot() {
+        return ResponseEntity.ok(Map.of(
+                "service", "KMS Inference Service API",
+                "status", "running",
+                "docs", "/docs"
+        ));
+    }
 
     @PostMapping("/analizar")
     public ResponseEntity<FastApiResponse> mockAnalizar(@RequestBody(required = false) FastApiRequest request) {

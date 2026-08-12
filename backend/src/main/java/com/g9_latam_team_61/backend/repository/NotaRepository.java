@@ -20,6 +20,11 @@ public interface NotaRepository extends JpaRepository<Nota, Long> {
     @Query("SELECT AVG(n.probabilidad) FROM Nota n")
     Double findConfianzaPromedio();
 
+    @Query("SELECT AVG(n.tiempoProcesamientoMs) FROM Nota n")
+    Double findLatenciaPromedio();
+
+    long countByFeedbackUsuarioIsNotNull();
+
     @Query(value = """
         SELECT n.* FROM notas n
         WHERE LOWER(n.contenido_original) LIKE LOWER(CONCAT('%', :query, '%'))

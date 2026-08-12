@@ -89,6 +89,17 @@ public class MlClient {
         }
     }
 
+    public FastApiHealthResponse verificarSalud() {
+        try {
+            return fastApiClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .body(FastApiHealthResponse.class);
+        } catch (Exception ex) {
+            return new FastApiHealthResponse("down", false);
+        }
+    }
+
     private void validarRespuesta(FastApiResponse response) {
         if (response == null) {
             throw new MlServiceException("FastAPI no devolvió respuesta");
