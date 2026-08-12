@@ -1,5 +1,7 @@
 package com.g9_latam_team_61.backend.controller;
 
+import com.g9_latam_team_61.backend.dto.AgruparResponse;
+import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
@@ -18,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -43,6 +47,30 @@ public class NotaController {
     public ResponseEntity<LoteResponse> analizarLoteCsv(@RequestParam("file") MultipartFile file) {
         LoteResponse response = notaService.procesarLote(file, null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/contenido/agrupar")
+    public ResponseEntity<AgruparResponse> agruparContenido(@RequestParam(value = "n_clusters", required = false) Integer nClusters) {
+        AgruparResponse response = notaService.agruparContenido(nClusters);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<List<NotaResponse>> buscar(@RequestParam("q") String query) {
+        List<NotaResponse> resultados = notaService.buscar(query);
+        return ResponseEntity.ok(resultados);
+    }
+
+    @GetMapping("/contenido/{id}/recomendados")
+    public ResponseEntity<List<NotaResponse>> recomendados(@PathVariable("id") Long id) {
+        List<NotaResponse> recomendados = notaService.obtenerRecomendados(id);
+        return ResponseEntity.ok(recomendados);
+    }
+
+    @GetMapping("/categorias")
+    public ResponseEntity<List<CategoriaConteoResponse>> obtenerCategorias() {
+        List<CategoriaConteoResponse> categorias = notaService.obtenerConteoCategorias();
+        return ResponseEntity.ok(categorias);
     }
 
     @GetMapping("/contenido")

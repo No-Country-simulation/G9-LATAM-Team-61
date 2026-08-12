@@ -2,6 +2,9 @@ package com.g9_latam_team_61.backend.controller;
 
 import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.client.MlServiceTimeoutException;
+import com.g9_latam_team_61.backend.dto.AgruparResponse;
+import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
+import com.g9_latam_team_61.backend.dto.ClusterResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
@@ -59,6 +62,51 @@ class NotaControllerTest {
                 .andExpect(jsonPath("$.categoria").value("DevOps"))
                 .andExpect(jsonPath("$.probabilidad").value(0.94))
                 .andExpect(jsonPath("$.tiempoProcesamientoMs").value(32.5));
+    }
+
+    @Test
+    void agruparContenido_debeRetornar200_conEstructuraClusters() throws Exception {
+        ClusterResponse c1 = new ClusterResponse(0, "Docker & Kubernetes", List.of("docker"), 2, LocalDateTime.now());
+        AgruparResponse response = new AgruparResponse(1, 2, List.of(c1), 45.0);
+
+        when(notaService.agruparContenido(isNull())).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido/agrupar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.n_clusters").value(1))
+                .andExpect(jsonPath("$.n_documentos").value(2))
+                .andExpect(jsonPath("$.clusters[0].nombreSugerido").value("Docker & Kubernetes"));
+    }
+
+    @Test
+    void buscar_debeRetornar200_conListaDeResultados() throws Exception {
+        NotaResponse n1 = new NotaResponse(1L, "Texto docker", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        when(notaService.buscar("docker")).thenReturn(List.of(n1));
+
+        mockMvc.perform(get("/api/buscar").param("q", "docker"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].categoria").value("DevOps"));
+    }
+
+    @Test
+    void recomendados_debeRetornar200_conNotasSimilares() throws Exception {
+        NotaResponse n1 = new NotaResponse(2L, "Texto devops", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        when(notaService.obtenerRecomendados(1L)).thenReturn(List.of(n1));
+
+        mockMvc.perform(get("/api/contenido/1/recomendados"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(2));
+    }
+
+    @Test
+    void obtenerCategorias_debeRetornar200_conResumenCategorias() throws Exception {
+        CategoriaConteoResponse c1 = new CategoriaConteoResponse("DevOps", 5);
+        when(notaService.obtenerConteoCategorias()).thenReturn(List.of(c1));
+
+        mockMvc.perform(get("/api/categorias"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].categoria").value("DevOps"))
+                .andExpect(jsonPath("$[0].total").value(5));
     }
 
     @Test

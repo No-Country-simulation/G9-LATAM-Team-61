@@ -1,5 +1,6 @@
 package com.g9_latam_team_61.backend.client;
 
+import com.g9_latam_team_61.backend.model.Nota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -60,6 +61,32 @@ public class MlClient {
         }
 
         return List.of(responseArray);
+    }
+
+    public FastApiClusteringResponse ejecutarClustering(List<Nota> notas, Integer nClusters) {
+        if (notas == null || notas.size() < 2) {
+            throw new IllegalArgumentException("Se necesitan al menos 2 documentos para realizar clustering");
+        }
+
+        List<FastApiDocumentoCluster> docs = notas.stream()
+                .map(n -> new FastApiDocumentoCluster(String.valueOf(n.getId()), n.getContenidoOriginal()))
+                .toList();
+
+        FastApiClusteringRequest request = new FastApiClusteringRequest(docs, nClusters, "kmeans", "es");
+
+        try {
+            return fastApiClient.post()
+                    .uri("/predict/clustering")
+                    .body(request)
+                    .retrieve()
+                    .body(FastApiClusteringResponse.class);
+        } catch (ResourceAccessException ex) {
+            throw new MlServiceTimeoutException("El servicio de clustering no respondió a tiempo");
+        } catch (HttpStatusCodeException ex) {
+            throw new MlServiceException("El servicio de clustering devolvió un error: " + ex.getStatusCode());
+        } catch (org.springframework.web.client.RestClientException ex) {
+            throw new MlServiceException("Error de comunicación con el servicio de clustering");
+        }
     }
 
     private void validarRespuesta(FastApiResponse response) {

@@ -1,16 +1,22 @@
 package com.g9_latam_team_61.backend.service;
 
+import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
+import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
 import com.g9_latam_team_61.backend.client.MlServiceException;
+import com.g9_latam_team_61.backend.dto.AgruparResponse;
+import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.mapper.NotaMapper;
+import com.g9_latam_team_61.backend.model.Cluster;
 import com.g9_latam_team_61.backend.model.Nota;
+import com.g9_latam_team_61.backend.repository.ClusterRepository;
 import com.g9_latam_team_61.backend.repository.NotaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -33,6 +40,9 @@ class NotaServiceTest {
 
     @Mock
     private NotaRepository notaRepository;
+
+    @Mock
+    private ClusterRepository clusterRepository;
 
     @Mock
     private MlClient mlClient;
@@ -77,6 +87,66 @@ class NotaServiceTest {
         assertEquals(expectedResponse, response);
         verify(mlClient).analizar("Descripcion con mas de 30 caracteres para testing completo");
         verify(notaRepository).save(notaSinGuardar);
+    }
+
+    @Test
+    void agruparContenido_debeEjecutarClusteringYPersistirClusters() {
+        Nota n1 = new Nota(); n1.setId(1L); n1.setContenidoOriginal("Texto 1");
+        Nota n2 = new Nota(); n2.setId(2L); n2.setContenidoOriginal("Texto 2");
+
+        FastApiClusterInfo info = new FastApiClusterInfo(0, 2, List.of("docker"), "Docker", List.of("Texto 1"));
+        FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-1", 1, 2, List.of(info), 45.0);
+
+        Cluster cluster = new Cluster(0, "Docker", List.of("docker"), 2, LocalDateTime.now());
+
+        when(notaRepository.findAll()).thenReturn(List.of(n1, n2));
+        when(mlClient.ejecutarClustering(anyList(), any())).thenReturn(mlResponse);
+        when(clusterRepository.save(any(Cluster.class))).thenReturn(cluster);
+
+        AgruparResponse response = notaService.agruparContenido(null);
+
+        assertEquals(1, response.nClusters());
+        assertEquals(2, response.nDocumentos());
+        assertEquals(1, response.clusters().size());
+        assertEquals("Docker", response.clusters().get(0).nombreSugerido());
+        verify(clusterRepository).save(any(Cluster.class));
+    }
+
+    @Test
+    void buscar_debeRetornarNotasSimilares() {
+        Nota nota = new Nota(); nota.setId(1L); nota.setCategoria("DevOps");
+        when(notaRepository.buscarPorSimilitud("docker")).thenReturn(List.of(nota));
+        when(notaMapper.toResponse(nota)).thenReturn(new NotaResponse(1L, "Texto", "DevOps", 0.9, List.of("docker"), LocalDateTime.now(), 20.0));
+
+        List<NotaResponse> resultado = notaService.buscar("docker");
+
+        assertEquals(1, resultado.size());
+        verify(notaRepository).buscarPorSimilitud("docker");
+    }
+
+    @Test
+    void obtenerRecomendados_debeRetornarNotasSimilares() {
+        Nota nota = new Nota(); nota.setId(2L); nota.setCategoria("DevOps");
+        when(notaRepository.existsById(1L)).thenReturn(true);
+        when(notaRepository.encontrarRecomendados(1L)).thenReturn(List.of(nota));
+        when(notaMapper.toResponse(nota)).thenReturn(new NotaResponse(2L, "Texto", "DevOps", 0.9, List.of("docker"), LocalDateTime.now(), 20.0));
+
+        List<NotaResponse> resultado = notaService.obtenerRecomendados(1L);
+
+        assertEquals(1, resultado.size());
+        verify(notaRepository).encontrarRecomendados(1L);
+    }
+
+    @Test
+    void obtenerConteoCategorias_debeRetornarResumen() {
+        CategoriaConteoResponse c1 = new CategoriaConteoResponse("DevOps", 5);
+        when(notaRepository.contarNotasPorCategoria()).thenReturn(List.of(c1));
+
+        List<CategoriaConteoResponse> resultado = notaService.obtenerConteoCategorias();
+
+        assertEquals(1, resultado.size());
+        assertEquals("DevOps", resultado.get(0).categoria());
+        assertEquals(5, resultado.get(0).total());
     }
 
     @Test

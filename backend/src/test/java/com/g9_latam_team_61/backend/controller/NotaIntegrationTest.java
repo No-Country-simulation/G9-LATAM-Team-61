@@ -1,5 +1,7 @@
 package com.g9_latam_team_61.backend.controller;
 
+import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
+import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
@@ -24,11 +26,14 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
@@ -111,5 +116,43 @@ class NotaIntegrationTest {
         assertEquals(2, notas.size());
         assertEquals("Texto CSV 1", notas.get(0).getContenidoOriginal());
         assertEquals("Texto CSV 2", notas.get(1).getContenidoOriginal());
+    }
+
+    @Test
+    void debeAgruparContenidoExitosamente() throws Exception {
+        Nota n1 = new Nota(); n1.setContenidoOriginal("Texto 1"); n1.setCategoria("DevOps"); n1.setProbabilidad(0.9);
+        Nota n2 = new Nota(); n2.setContenidoOriginal("Texto 2"); n2.setCategoria("DevOps"); n2.setProbabilidad(0.9);
+        notaRepository.saveAll(List.of(n1, n2));
+
+        FastApiClusterInfo info = new FastApiClusterInfo(0, 2, List.of("docker"), "Docker", List.of("Texto 1"));
+        FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-1", 1, 2, List.of(info), 45.0);
+
+        when(mlClient.ejecutarClustering(anyList(), any())).thenReturn(mlResponse);
+
+        mockMvc.perform(post("/api/contenido/agrupar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.n_clusters").value(1))
+                .andExpect(jsonPath("$.n_documentos").value(2));
+    }
+
+    @Test
+    void debeBuscarPorSimilitudYRetornarResultados() throws Exception {
+        Nota n1 = new Nota(); n1.setContenidoOriginal("Texto sobre docker en OCI"); n1.setCategoria("DevOps"); n1.setProbabilidad(0.9); n1.setPalabrasClave(List.of("docker"));
+        notaRepository.save(n1);
+
+        mockMvc.perform(get("/api/buscar").param("q", "docker"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].categoria").value("DevOps"));
+    }
+
+    @Test
+    void debeRetornarResumenDeCategorias() throws Exception {
+        Nota n1 = new Nota(); n1.setContenidoOriginal("Texto de prueba"); n1.setCategoria("DevOps"); n1.setProbabilidad(0.9);
+        notaRepository.save(n1);
+
+        mockMvc.perform(get("/api/categorias"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].categoria").value("DevOps"))
+                .andExpect(jsonPath("$[0].total").value(1));
     }
 }

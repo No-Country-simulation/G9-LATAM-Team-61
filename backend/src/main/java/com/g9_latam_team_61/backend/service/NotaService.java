@@ -1,15 +1,22 @@
 package com.g9_latam_team_61.backend.service;
 
+import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
+import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
+import com.g9_latam_team_61.backend.dto.AgruparResponse;
+import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
+import com.g9_latam_team_61.backend.dto.ClusterResponse;
 import com.g9_latam_team_61.backend.dto.EstadisticasResponse;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.LoteResponse;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
 import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.mapper.NotaMapper;
+import com.g9_latam_team_61.backend.model.Cluster;
 import com.g9_latam_team_61.backend.model.Nota;
+import com.g9_latam_team_61.backend.repository.ClusterRepository;
 import com.g9_latam_team_61.backend.repository.NotaRepository;
 import com.g9_latam_team_61.backend.util.CsvParserUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +34,7 @@ import java.util.Set;
 public class NotaService {
 
     private final NotaRepository notaRepository;
+    private final ClusterRepository clusterRepository;
     private final MlClient mlClient;
     private final NotaMapper notaMapper;
 
@@ -91,6 +99,86 @@ public class NotaService {
                 tiempoPromedioRedondeado,
                 respuestas
         );
+    }
+
+    public AgruparResponse agruparContenido(Integer nClusters) {
+        List<Nota> todasLasNotas = notaRepository.findAll();
+        if (todasLasNotas.size() < 2) {
+            throw new IllegalArgumentException("Se necesitan al menos 2 notas registradas para realizar el agrupamiento por K-Means");
+        }
+
+        // 1. Limpiar asignaciones y clusters previos
+        todasLasNotas.forEach(nota -> nota.setClusterId(null));
+        notaRepository.saveAll(todasLasNotas);
+        clusterRepository.deleteAll();
+
+        // 2. Ejecutar clustering en FastAPI
+        FastApiClusteringResponse mlResponse = mlClient.ejecutarClustering(todasLasNotas, nClusters);
+
+        List<ClusterResponse> clusterResponses = new ArrayList<>();
+        if (mlResponse.clusters() != null) {
+            for (FastApiClusterInfo info : mlResponse.clusters()) {
+                Cluster cluster = new Cluster();
+                cluster.setId(info.cluster_id());
+                cluster.setNombreSugerido(info.etiqueta_sugerida() != null ? info.etiqueta_sugerida() : "Cluster " + info.cluster_id());
+                cluster.setPalabrasClaveTop(info.palabras_clave() != null ? info.palabras_clave() : List.of());
+                cluster.setTotalDocumentos(info.tamano() != null ? info.tamano() : 0);
+
+                Cluster clusterGuardado = clusterRepository.save(cluster);
+
+                if (info.documentos() != null) {
+                    for (Nota nota : todasLasNotas) {
+                        if (info.documentos().contains(nota.getContenidoOriginal())) {
+                            nota.setClusterId(clusterGuardado.getId());
+                        }
+                    }
+                }
+
+                clusterResponses.add(new ClusterResponse(
+                        clusterGuardado.getId(),
+                        clusterGuardado.getNombreSugerido(),
+                        clusterGuardado.getPalabrasClaveTop(),
+                        clusterGuardado.getTotalDocumentos(),
+                        clusterGuardado.getFechaGeneracion()
+                ));
+            }
+        }
+
+        // 3. Guardar las notas vinculadas a su nuevo cluster_id
+        notaRepository.saveAll(todasLasNotas);
+
+        return new AgruparResponse(
+                mlResponse.n_clusters() != null ? mlResponse.n_clusters() : clusterResponses.size(),
+                mlResponse.n_documentos() != null ? mlResponse.n_documentos() : todasLasNotas.size(),
+                clusterResponses,
+                mlResponse.tiempo_procesamiento_ms()
+        );
+    }
+
+    public List<NotaResponse> buscar(String query) {
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("El parámetro de búsqueda no puede estar vacío");
+        }
+
+        List<Nota> resultados = notaRepository.buscarPorSimilitud(query.trim());
+        return resultados.stream()
+                .map(notaMapper::toResponse)
+                .toList();
+    }
+
+    public List<NotaResponse> obtenerRecomendados(Long id) {
+        if (id == null || !notaRepository.existsById(id)) {
+            throw new IllegalArgumentException("La nota especificada no existe");
+        }
+
+        List<Nota> recomendados = notaRepository.encontrarRecomendados(id);
+        return recomendados.stream()
+                .map(notaMapper::toResponse)
+                .toList();
+    }
+
+    public List<CategoriaConteoResponse> obtenerConteoCategorias() {
+        return notaRepository.contarNotasPorCategoria();
     }
 
     public Page<NotaResponse> obtenerHistorial(String categoria, Pageable pageable) {
