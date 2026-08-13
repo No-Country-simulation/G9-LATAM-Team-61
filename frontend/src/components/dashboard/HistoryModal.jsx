@@ -43,13 +43,27 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
       aria-labelledby="modal-history-title"
       onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
     >
-      <div className="modal-content" style={{ maxWidth: '850px' }}>
+      <div
+        className="modal-content"
+        style={{
+          maxWidth: '1100px',
+          width: '95%',
+          maxHeight: '90vh',
+          padding: '2.2rem',
+          boxSizing: 'border-box',
+        }}
+      >
         <button className="modal-close" onClick={onClose} aria-label="Cerrar">
           <svg className="icon icon-sm" viewBox="0 0 24 24">
             <path d="M18 6L6 18M6 6l12 12"></path>
           </svg>
         </button>
-        <h2 id="modal-history-title" className="section-title" style={{ marginBottom: '1.2rem', border: 'none', padding: 0 }}>
+
+        <h2
+          id="modal-history-title"
+          className="section-title"
+          style={{ marginBottom: '1.2rem', border: 'none', padding: 0 }}
+        >
           <svg className="icon" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -66,7 +80,7 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
             <button
               key={cat.id}
               className={`page-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-              style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
               onClick={() => handleCategoryChange(cat.id)}
             >
               {cat.label}
@@ -74,35 +88,84 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
           ))}
         </div>
 
-        <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-          <table>
+        <div
+          style={{
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)',
+            overflowX: 'auto',
+            background: 'var(--bg-card)',
+          }}
+        >
+          <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse' }}>
             <thead style={{ background: 'var(--bg-app)' }}>
               <tr>
-                <th>EXTRACTO / CONTENIDO</th>
-                <th>CATEGORÍA</th>
-                <th>FECHA</th>
-                <th>TAGS</th>
-                <th style={{ textAlign: 'right', paddingRight: '1rem' }}>ACCIÓN</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem' }}>EXTRACTO / CONTENIDO</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '130px' }}>CATEGORÍA</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '90px' }}>FECHA</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem' }}>TAGS (TF-IDF)</th>
+                <th style={{ textAlign: 'right', padding: '0.8rem 1.2rem', width: '160px' }}>ACCIÓN</th>
               </tr>
             </thead>
             <tbody id="modal-history-tbody">
               {currentDocs.length > 0 ? (
                 currentDocs.map((doc) => (
-                  <tr key={doc.id}>
-                    <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.content || doc.title}>
-                      {doc.content ? (doc.content.length > 60 ? doc.content.slice(0, 60) + '...' : doc.content) : doc.title}
+                  <tr key={doc.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td
+                      style={{
+                        padding: '0.85rem 1rem',
+                        color: 'var(--text-primary)',
+                        fontWeight: 500,
+                        maxWidth: '320px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={doc.content || doc.title}
+                    >
+                      {doc.content
+                        ? doc.content.length > 65
+                          ? doc.content.slice(0, 65) + '...'
+                          : doc.content
+                        : doc.title}
                     </td>
-                    <td>
+                    <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                       <Badge category={doc.category}>{doc.category}</Badge>
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.date}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                    <td
+                      style={{
+                        padding: '0.85rem 1rem',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {doc.date}
+                    </td>
+                    <td
+                      style={{
+                        padding: '0.85rem 1rem',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.85rem',
+                        maxWidth: '220px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={doc.tags}
+                    >
+                      {doc.tags || '—'}
+                    </td>
+                    <td style={{ padding: '0.85rem 1.2rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                         <button
                           type="button"
                           className="btn-secondary"
-                          style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                          style={{
+                            fontSize: '0.78rem',
+                            padding: '4px 10px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-card)',
+                          }}
                           onClick={() => {
                             onClose();
                             if (onViewDetail) onViewDetail(doc);
@@ -114,7 +177,12 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
                         <button
                           type="button"
                           className="btn-secondary"
-                          style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                          style={{
+                            fontSize: '0.78rem',
+                            padding: '4px 10px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-card)',
+                          }}
                           onClick={() => {
                             onClose();
                             if (onViewRecommendations) onViewRecommendations(doc);
@@ -129,7 +197,10 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                  <td
+                    colSpan="5"
+                    style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}
+                  >
                     No hay documentos en esta categoría.
                   </td>
                 </tr>

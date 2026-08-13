@@ -17,8 +17,8 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetai
     );
   });
 
-  // Show top 3 recent documents in the dashboard card
-  const recentDocs = filteredDocs.slice(0, 3);
+  // Show top 5 recent documents in the dashboard card
+  const recentDocs = filteredDocs.slice(0, 5);
 
   return (
     <div>
@@ -44,33 +44,66 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetai
           Ver todos ({documents.length})
         </button>
       </h2>
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <table>
+      <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ background: 'var(--bg-app)' }}>
             <tr>
-              <th>EXTRACTO / CONTENIDO</th>
-              <th>CATEGORÍA</th>
-              <th>TAGS (TF-IDF)</th>
-              <th style={{ textAlign: 'right', paddingRight: '1rem' }}>ACCIÓN</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>EXTRACTO / CONTENIDO</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem', width: '110px' }}>CATEGORÍA</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem' }}>TAGS (TF-IDF)</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', width: '140px' }}>ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="recent-tbody">
             {recentDocs.length > 0 ? (
               recentDocs.map((doc) => (
-                <tr key={doc.id} className="fade-in">
-                  <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.content || doc.title}>
-                    {doc.content ? (doc.content.length > 55 ? doc.content.slice(0, 55) + '...' : doc.content) : doc.title}
+                <tr key={doc.id} className="fade-in" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td
+                    style={{
+                      padding: '0.7rem 1rem',
+                      color: 'var(--text-primary)',
+                      fontWeight: 500,
+                      maxWidth: '220px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={doc.content || doc.title}
+                  >
+                    {doc.content
+                      ? doc.content.length > 48
+                        ? doc.content.slice(0, 48) + '...'
+                        : doc.content
+                      : doc.title}
                   </td>
-                  <td>
+                  <td style={{ padding: '0.7rem 0.8rem', whiteSpace: 'nowrap' }}>
                     <Badge category={doc.category}>{doc.category}</Badge>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
-                  <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                  <td
+                    style={{
+                      padding: '0.7rem 0.8rem',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.82rem',
+                      maxWidth: '180px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={doc.tags}
+                  >
+                    {doc.tags || '—'}
+                  </td>
+                  <td style={{ padding: '0.7rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                       <button
                         type="button"
                         className="btn-secondary"
-                        style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '3px 8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--bg-card)',
+                        }}
                         onClick={() => onViewDetail && onViewDetail(doc)}
                         title="Ver detalle completo de la nota"
                       >
@@ -79,7 +112,12 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetai
                       <button
                         type="button"
                         className="btn-secondary"
-                        style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '3px 8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--bg-card)',
+                        }}
                         onClick={() => onViewRecommendations && onViewRecommendations(doc)}
                         title="Ver documentos recomendados afines"
                       >
