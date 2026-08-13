@@ -110,13 +110,17 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
       }
     ];
 
-    global.fetch = vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockSearchResults,
     });
+    global.fetch = mockFetch;
 
     const results = await searchContent('docker', 'http://localhost:8080/api');
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:8080/api/buscar?q=docker');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/buscar?q=docker',
+      expect.objectContaining({ method: 'GET' })
+    );
     expect(results).toHaveLength(1);
     expect(results[0].category).toBe('DevOps');
     expect(results[0].tags).toBe('docker, kubernetes');
@@ -212,13 +216,17 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
       }
     ];
 
-    global.fetch = vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockRecs,
     });
+    global.fetch = mockFetch;
 
     const recs = await fetchRecommendations(1, 'http://localhost:8080/api');
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:8080/api/contenido/1/recomendados');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/contenido/1/recomendados',
+      expect.objectContaining({ method: 'GET' })
+    );
     expect(recs).toHaveLength(1);
     expect(recs[0].category).toBe('Frontend');
   });

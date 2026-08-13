@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import Button from '../common/Button';
+import { parseBatchFileContent } from '../../utils/fileParser';
 
 /**
- * Upload Modal Component for CSV & JSON Bulk Upload (Sprint 3 - Real Batch Ingestion)
+ * Upload Modal Component for CSV & JSON Bulk Upload (Sprint 3)
  */
 export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch = false }) {
   const [parsedTexts, setParsedTexts] = useState([]);
@@ -25,53 +26,21 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
     onClose();
   };
 
-  const parseFileContent = (content, name) => {
-    try {
-      setErrorMessage('');
-      let texts = [];
-
-      if (name.endsWith('.json')) {
-        const json = JSON.parse(content);
-        if (Array.isArray(json)) {
-          texts = json.map((item) => (typeof item === 'string' ? item : item.descripcion || item.texto || item.contenido || '')).filter((t) => t.trim().length >= 30);
-        } else if (json.textos && Array.isArray(json.textos)) {
-          texts = json.textos.filter((t) => typeof t === 'string' && t.trim().length >= 30);
-        }
-      } else {
-        // CSV or TXT line by line
-        const lines = content.split(/\r?\n/);
-        for (let line of lines) {
-          let trimmed = line.trim();
-          // Remove wrapping quotes if CSV
-          if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-            trimmed = trimmed.substring(1, trimmed.length - 1);
-          }
-          if (trimmed.length >= 30 && !trimmed.toLowerCase().startsWith('descripcion') && !trimmed.toLowerCase().startsWith('contenido')) {
-            texts.push(trimmed);
-          }
-        }
-      }
-
-      if (texts.length === 0) {
-        setErrorMessage('No se encontraron textos válidos (mínimo 30 caracteres por nota) en el archivo.');
-        setParsedTexts([]);
-      } else {
-        setParsedTexts(texts);
-        setFileName(name);
-      }
-    } catch (err) {
-      setErrorMessage('Error al parsear el archivo. Verifica el formato CSV o JSON.');
-      setParsedTexts([]);
-    }
-  };
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      parseFileContent(event.target.result, file.name);
+      const { texts, error } = parseBatchFileContent(event.target.result, file.name);
+      if (error) {
+        setErrorMessage(error);
+        setParsedTexts([]);
+      } else {
+        setParsedTexts(texts);
+        setFileName(file.name);
+        setErrorMessage('');
+      }
     };
     reader.readAsText(file);
   };
@@ -113,11 +82,7 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
           </svg>
         </button>
 
-        <h2
-          id="modal-upload-title"
-          className="section-title"
-          style={{ marginBottom: '0.8rem', border: 'none', padding: 0 }}
-        >
+        <h2 id="modal-upload-title" className="section-title" style={{ marginBottom: '0.8rem', border: 'none', padding: 0 }}>
           <svg className="icon" viewBox="0 0 24 24" style={{ color: 'var(--brand-primary)' }}>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -215,7 +180,6 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
             </div>
           </>
         ) : (
-          /* Batch Summary View */
           <div style={{ textAlign: 'center', padding: '1rem 0' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#E1FAEC', color: '#05CD99', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
               <svg className="icon icon-md" viewBox="0 0 24 24">
@@ -223,7 +187,7 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
               </svg>
             </div>
             <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-              ¡Lote procesado e indexado con éxito!
+              Lote procesado e indexado con éxito
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               El microservicio de inferencia clasificó y guardó todas las notas en PostgreSQL.
