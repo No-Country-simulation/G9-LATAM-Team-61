@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
 
@@ -6,14 +6,32 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [selectedCorrection, setSelectedCorrection] = useState('');
   const [showCorrectionSelect, setShowCorrectionSelect] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState('');
+
+  // Reset internal modal feedback state whenever a new document is opened
+  useEffect(() => {
+    if (isOpen && resultData) {
+      setFeedbackSent(!!resultData.feedback);
+      setSelectedCorrection('');
+      setShowCorrectionSelect(false);
+      setCurrentCategory(resultData.category || 'Otros');
+    }
+  }, [isOpen, resultData?.id, resultData?.category, resultData?.feedback]);
 
   if (!isOpen || !resultData) return null;
 
-  const { id, title, category, confidence, tags } = resultData;
+  const { id, title, confidence, tags } = resultData;
+
+  const handleClose = () => {
+    setFeedbackSent(false);
+    setSelectedCorrection('');
+    setShowCorrectionSelect(false);
+    onClose();
+  };
 
   const handleConfirmCorrect = async () => {
     if (onSendFeedback && id) {
-      await onSendFeedback(id, category, 'Categoría confirmada por el usuario como correcta.');
+      await onSendFeedback(id, currentCategory, 'Categoría confirmada por el usuario como correcta.');
       setFeedbackSent(true);
     }
   };
@@ -21,7 +39,8 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
   const handleCorrectionSubmit = async () => {
     if (!selectedCorrection) return;
     if (onSendFeedback && id) {
-      await onSendFeedback(id, selectedCorrection, `Categoría corregida manualmente de ${category} a ${selectedCorrection}`);
+      await onSendFeedback(id, selectedCorrection, `Categoría corregida manualmente de ${currentCategory} a ${selectedCorrection}`);
+      setCurrentCategory(selectedCorrection);
       setFeedbackSent(true);
     }
   };
@@ -32,10 +51,10 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-result-title"
-      onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
+      onClick={(e) => e.target.classList.contains('modal-overlay') && handleClose()}
     >
       <div className="modal-content" style={{ maxWidth: '520px' }}>
-        <button className="modal-close" onClick={onClose} aria-label="Cerrar modal">
+        <button className="modal-close" onClick={handleClose} aria-label="Cerrar modal">
           <svg className="icon icon-sm" viewBox="0 0 24 24">
             <path d="M18 6L6 18M6 6l12 12"></path>
           </svg>
@@ -74,7 +93,7 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
                 CATEGORÍA PREDICHA
               </p>
               <div id="res-badge-container">
-                <Badge category={category}>{category}</Badge>
+                <Badge category={currentCategory}>{currentCategory}</Badge>
               </div>
             </div>
             <div>
@@ -177,7 +196,7 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="primary" onClick={onClose}>
+          <Button variant="primary" onClick={handleClose}>
             Aceptar y Ver en Historial
           </Button>
         </div>
