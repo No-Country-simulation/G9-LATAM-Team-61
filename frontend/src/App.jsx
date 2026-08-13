@@ -100,6 +100,7 @@ export function App() {
             documents={documents}
             searchQuery={searchQuery}
             onOpenHistory={() => setActiveModal('history')}
+            onViewDetail={openResultModal}
             onViewRecommendations={openRecommendationsModal}
           />
 
@@ -126,6 +127,7 @@ export function App() {
         isOpen={activeModal === 'history'}
         onClose={closeModal}
         documents={documents}
+        onViewDetail={openResultModal}
         onViewRecommendations={openRecommendationsModal}
       />
 

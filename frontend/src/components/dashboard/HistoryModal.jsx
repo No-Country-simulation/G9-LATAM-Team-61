@@ -4,22 +4,36 @@ import Badge from '../common/Badge';
 /**
  * Full History Modal Component with Client-side Pagination (Phase 4)
  */
-export function HistoryModal({ isOpen, onClose, documents, onViewRecommendations }) {
+export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewRecommendations }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterCategory, setFilterCategory] = useState('');
-  const itemsPerPage = 6;
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const itemsPerPage = 8;
 
   if (!isOpen) return null;
 
-  const filteredDocs = filterCategory
-    ? (documents || []).filter((d) => d.category && d.category.toLowerCase() === filterCategory.toLowerCase())
-    : (documents || []);
+  // Static Categories from SRS
+  const CATEGORIES = [
+    { id: 'ALL', label: 'Todas' },
+    { id: 'DevOps', label: 'DevOps' },
+    { id: 'Backend', label: 'Backend' },
+    { id: 'Frontend', label: 'Frontend' },
+    { id: 'Data Science', label: 'Data Science' },
+    { id: 'Mobile', label: 'Mobile' },
+    { id: 'Otros', label: 'Otros' },
+  ];
+
+  const filteredDocs = (documents || []).filter((doc) => {
+    if (selectedCategory === 'ALL') return true;
+    return doc.category && doc.category.toLowerCase() === selectedCategory.toLowerCase();
+  });
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentDocs = filteredDocs.slice(startIndex, startIndex + itemsPerPage);
+  const currentDocs = filteredDocs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const categories = ['DevOps', 'Backend', 'Frontend', 'Data Science', 'Mobile', 'Otros'];
+  const handleCategoryChange = (catId) => {
+    setSelectedCategory(catId);
+    setCurrentPage(1);
+  };
 
   return (
     <div
@@ -29,17 +43,13 @@ export function HistoryModal({ isOpen, onClose, documents, onViewRecommendations
       aria-labelledby="modal-history-title"
       onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
     >
-      <div className="modal-content" style={{ maxWidth: '920px', padding: '2rem' }}>
-        <button className="modal-close" onClick={onClose} aria-label="Cerrar historial">
+      <div className="modal-content" style={{ maxWidth: '850px' }}>
+        <button className="modal-close" onClick={onClose} aria-label="Cerrar">
           <svg className="icon icon-sm" viewBox="0 0 24 24">
             <path d="M18 6L6 18M6 6l12 12"></path>
           </svg>
         </button>
-        <h2
-          id="modal-history-title"
-          className="section-title"
-          style={{ marginBottom: '1rem', border: 'none', padding: 0 }}
-        >
+        <h2 id="modal-history-title" className="section-title" style={{ marginBottom: '1.2rem', border: 'none', padding: 0 }}>
           <svg className="icon" viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -47,44 +57,19 @@ export function HistoryModal({ isOpen, onClose, documents, onViewRecommendations
             <line x1="16" y1="17" x2="8" y2="17"></line>
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
-          Historial Completo de Documentos ({filteredDocs.length})
+          Historial de Documentos Procesados ({filteredDocs.length})
         </h2>
 
-        {/* Filter Badges in Modal */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => { setFilterCategory(''); setCurrentPage(1); }}
-            style={{
-              fontSize: '0.75rem',
-              padding: '3px 10px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              background: filterCategory === '' ? 'var(--brand-primary)' : 'var(--bg-app)',
-              color: filterCategory === '' ? '#FFFFFF' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            Todas ({documents.length})
-          </button>
-          {categories.map((cat) => (
+        {/* Filter categories pill bar */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+          {CATEGORIES.map((cat) => (
             <button
-              key={cat}
-              type="button"
-              onClick={() => { setFilterCategory(filterCategory === cat ? '' : cat); setCurrentPage(1); }}
-              style={{
-                fontSize: '0.75rem',
-                padding: '3px 10px',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                background: filterCategory === cat ? 'var(--brand-primary)' : 'var(--bg-app)',
-                color: filterCategory === cat ? '#FFFFFF' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
+              key={cat.id}
+              className={`page-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+              onClick={() => handleCategoryChange(cat.id)}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>
@@ -113,18 +98,32 @@ export function HistoryModal({ isOpen, onClose, documents, onViewRecommendations
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.date}</td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
                     <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
-                        onClick={() => {
-                          onClose();
-                          if (onViewRecommendations) onViewRecommendations(doc);
-                        }}
-                        title="Ver documentos recomendados afines"
-                      >
-                        Similares
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                          onClick={() => {
+                            onClose();
+                            if (onViewDetail) onViewDetail(doc);
+                          }}
+                          title="Ver detalle completo de la nota"
+                        >
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                          onClick={() => {
+                            onClose();
+                            if (onViewRecommendations) onViewRecommendations(doc);
+                          }}
+                          title="Ver documentos recomendados afines"
+                        >
+                          Similares
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

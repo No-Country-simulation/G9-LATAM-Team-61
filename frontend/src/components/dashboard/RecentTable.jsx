@@ -5,7 +5,7 @@ import Card from '../common/Card';
 /**
  * Recent Processed Documents Table Component (Últimos Procesados - Phase 4)
  */
-export function RecentTable({ documents, searchQuery, onOpenHistory, onViewRecommendations }) {
+export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetail, onViewRecommendations }) {
   const filteredDocs = (documents || []).filter((doc) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -66,15 +66,26 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewRecom
                   </td>
                   <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
                   <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
-                      onClick={() => onViewRecommendations && onViewRecommendations(doc)}
-                      title="Ver documentos recomendados afines"
-                    >
-                      Similares
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                        onClick={() => onViewDetail && onViewDetail(doc)}
+                        title="Ver detalle completo de la nota"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ fontSize: '0.75rem', padding: '3px 8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                        onClick={() => onViewRecommendations && onViewRecommendations(doc)}
+                        title="Ver documentos recomendados afines"
+                      >
+                        Similares
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
