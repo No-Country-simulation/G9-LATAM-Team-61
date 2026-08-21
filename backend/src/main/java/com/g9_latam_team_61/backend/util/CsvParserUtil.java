@@ -9,6 +9,9 @@ import java.util.List;
 
 public class CsvParserUtil {
 
+    private static final int MIN_LENGTH = 30;
+    private static final int MAX_LENGTH = 5000;
+
     private CsvParserUtil() {
     }
 
@@ -18,10 +21,12 @@ public class CsvParserUtil {
         }
 
         List<String> lineas = new ArrayList<>();
+        int numeroLinea = 0;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String linea;
             boolean primeraLinea = true;
             while ((linea = reader.readLine()) != null) {
+                numeroLinea++;
                 String textoLimpio = linea.trim();
                 if (textoLimpio.isEmpty()) continue;
 
@@ -33,8 +38,15 @@ public class CsvParserUtil {
                     continue;
                 }
                 primeraLinea = false;
+
+                if (textoLimpio.length() < MIN_LENGTH || textoLimpio.length() > MAX_LENGTH) {
+                    throw new IllegalArgumentException("El registro en la línea " + numeroLinea + " debe tener entre " + MIN_LENGTH + " y " + MAX_LENGTH + " caracteres");
+                }
+
                 lineas.add(textoLimpio);
             }
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("Error al procesar el archivo CSV: " + e.getMessage());
         }

@@ -139,8 +139,10 @@ class NotaControllerTest {
 
     @Test
     void analizarLote_debeRetornar201_conPayloadJsonValido() throws Exception {
-        LoteRequest request = new LoteRequest(List.of("Texto 1", "Texto 2"));
-        NotaResponse n1 = new NotaResponse(1L, "Texto 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        String texto1 = "Texto de prueba numero uno con mas de 30 caracteres";
+        String texto2 = "Texto de prueba numero dos con mas de 30 caracteres";
+        LoteRequest request = new LoteRequest(List.of(texto1, texto2));
+        NotaResponse n1 = new NotaResponse(1L, texto1, "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
         LoteResponse response = new LoteResponse(2, 6.4, 3.2, List.of(n1));
 
         when(notaService.procesarLote(isNull(), any(LoteRequest.class))).thenReturn(response);
@@ -155,8 +157,9 @@ class NotaControllerTest {
 
     @Test
     void analizarLote_debeRetornar201_conArchivoCsvValido() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", "contenido\nTexto 1\n".getBytes(StandardCharsets.UTF_8));
-        NotaResponse n1 = new NotaResponse(1L, "Texto 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        String csvContent = "contenido\nTexto de prueba CSV numero uno con 30 caracteres\n";
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", csvContent.getBytes(StandardCharsets.UTF_8));
+        NotaResponse n1 = new NotaResponse(1L, "Texto de prueba CSV numero uno con 30 caracteres", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
         LoteResponse response = new LoteResponse(1, 3.2, 3.2, List.of(n1));
 
         when(notaService.procesarLote(any(), isNull())).thenReturn(response);
@@ -179,13 +182,133 @@ class NotaControllerTest {
     }
 
     @Test
-    void analizar_debeRetornar400_siDescripcionEsMuyCorta() throws Exception {
-        NotaRequest invalido = new NotaRequest("corta");
+    void analizarLote_debeRetornar400_cuandoElementoTiene29Caracteres() throws Exception {
+        String texto29 = "12345678901234567890123456789";
+        LoteRequest requestInvalido = new LoteRequest(List.of(texto29));
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(requestInvalido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void analizarLote_debeRetornar400_cuandoElementoTiene5001Caracteres() throws Exception {
+        String texto5001 = "a".repeat(5001);
+        LoteRequest requestInvalido = new LoteRequest(List.of(texto5001));
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(requestInvalido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void analizar_debeRetornar201_conLimiteInferiorExacto30Caracteres() throws Exception {
+        String texto30 = "123456789012345678901234567890"; // 30 chars
+        NotaRequest request = new NotaRequest(texto30);
+        NotaResponse response = new NotaResponse(1L, texto30, "DevOps", 0.94, List.of("Docker"), LocalDateTime.now(), 30.0);
+
+        when(notaService.procesar(any(NotaRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoria").value("DevOps"));
+    }
+
+    @Test
+    void analizar_debeRetornar201_conLimiteSuperiorExacto5000Caracteres() throws Exception {
+        String texto5000 = "a".repeat(5000); // 5000 chars
+        NotaRequest request = new NotaRequest(texto5000);
+        NotaResponse response = new NotaResponse(1L, texto5000, "DevOps", 0.94, List.of("Docker"), LocalDateTime.now(), 30.0);
+
+        when(notaService.procesar(any(NotaRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoria").value("DevOps"));
+    }
+
+    @Test
+    void analizar_debeRetornar400_con29Caracteres() throws Exception {
+        String texto29 = "12345678901234567890123456789"; // 29 chars
+        NotaRequest invalido = new NotaRequest(texto29);
 
         mockMvc.perform(post("/api/contenido")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonMapper.writeValueAsString(invalido)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void analizar_debeRetornar400_con5001Caracteres() throws Exception {
+        String texto5001 = "a".repeat(5001); // 5001 chars
+        NotaRequest invalido = new NotaRequest(texto5001);
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(invalido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void analizar_debeRetornar400_siDescripcionEsVaciaOSoloEspacios() throws Exception {
+        NotaRequest vacio = new NotaRequest("");
+        NotaRequest soloEspacios = new NotaRequest("                     ");
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(vacio)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(soloEspacios)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void analizar_debeRetornar400_cuandoJsonEsMalformado() throws Exception {
+        String jsonMalformado = "{\"descripcion\": \"no cerrado";
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMalformado))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("El cuerpo de la solicitud JSON es inválido o está malformado"));
+    }
+
+    @Test
+    void analizar_debeRetornar415_cuandoMediaTypeNoEsSoportado() throws Exception {
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("Texto plano sin formato json de 30 o mas caracteres"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
+    }
+
+    @Test
+    void analizar_debeRetornar422_cuandoFastApiDevuelveErrorDeValidacion() throws Exception {
+        NotaRequest request = new NotaRequest("Una descripcion valida de prueba con mas de 30 caracteres");
+        when(notaService.procesar(any(NotaRequest.class)))
+                .thenThrow(new com.g9_latam_team_61.backend.client.MlValidationException("Error de validación en servicio de inferencia: 422", org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY));
+
+        mockMvc.perform(post("/api/contenido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status").value(422));
     }
 
     @Test

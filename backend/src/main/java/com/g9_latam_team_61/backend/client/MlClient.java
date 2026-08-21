@@ -27,6 +27,9 @@ public class MlClient {
         } catch (ResourceAccessException ex) {
             throw new MlServiceTimeoutException("El servicio de análisis no respondió a tiempo");
         } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de inferencia: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
             throw new MlServiceException("El servicio de análisis devolvió un error: " + ex.getStatusCode());
         } catch (org.springframework.web.client.RestClientException ex) {
             throw new MlServiceException("Error de comunicación con el servicio de análisis");
@@ -51,6 +54,9 @@ public class MlClient {
         } catch (ResourceAccessException ex) {
             throw new MlServiceTimeoutException("El servicio de análisis en lote no respondió a tiempo");
         } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de inferencia por lote: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
             throw new MlServiceException("El servicio de análisis devolvió un error: " + ex.getStatusCode());
         } catch (org.springframework.web.client.RestClientException ex) {
             throw new MlServiceException("Error de comunicación con el servicio de análisis en lote");
@@ -83,6 +89,9 @@ public class MlClient {
         } catch (ResourceAccessException ex) {
             throw new MlServiceTimeoutException("El servicio de clustering no respondió a tiempo");
         } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de clustering: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
             throw new MlServiceException("El servicio de clustering devolvió un error: " + ex.getStatusCode());
         } catch (org.springframework.web.client.RestClientException ex) {
             throw new MlServiceException("Error de comunicación con el servicio de clustering");

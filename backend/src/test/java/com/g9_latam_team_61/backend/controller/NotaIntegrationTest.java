@@ -116,7 +116,10 @@ class NotaIntegrationTest {
 
         when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
 
-        LoteRequest request = new LoteRequest(List.of("Texto de prueba masivo 1", "Texto de prueba masivo 2"));
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres",
+                "Texto de prueba masivo numero dos con mas de 30 caracteres"
+        ));
 
         mockMvc.perform(post("/api/contenido/lote")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -125,8 +128,8 @@ class NotaIntegrationTest {
 
         List<Nota> notas = notaRepository.findAll();
         assertEquals(2, notas.size());
-        assertEquals("Texto de prueba masivo 1", notas.get(0).getContenidoOriginal());
-        assertEquals("Texto de prueba masivo 2", notas.get(1).getContenidoOriginal());
+        assertEquals("Texto de prueba masivo numero uno con mas de 30 caracteres", notas.get(0).getContenidoOriginal());
+        assertEquals("Texto de prueba masivo numero dos con mas de 30 caracteres", notas.get(1).getContenidoOriginal());
     }
 
     @Test
@@ -136,7 +139,8 @@ class NotaIntegrationTest {
 
         when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
 
-        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", "contenido\nTexto CSV 1\nTexto CSV 2\n".getBytes(StandardCharsets.UTF_8));
+        String csvContent = "contenido\nTexto de prueba CSV numero uno con mas de 30 caracteres\nTexto de prueba CSV numero dos con mas de 30 caracteres\n";
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", csvContent.getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(multipart("/api/contenido/lote")
                         .file(file))
@@ -144,8 +148,8 @@ class NotaIntegrationTest {
 
         List<Nota> notas = notaRepository.findAll();
         assertEquals(2, notas.size());
-        assertEquals("Texto CSV 1", notas.get(0).getContenidoOriginal());
-        assertEquals("Texto CSV 2", notas.get(1).getContenidoOriginal());
+        assertEquals("Texto de prueba CSV numero uno con mas de 30 caracteres", notas.get(0).getContenidoOriginal());
+        assertEquals("Texto de prueba CSV numero dos con mas de 30 caracteres", notas.get(1).getContenidoOriginal());
     }
 
     @Test

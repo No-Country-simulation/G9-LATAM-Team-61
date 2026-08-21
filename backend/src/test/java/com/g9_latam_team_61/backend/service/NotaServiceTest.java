@@ -210,7 +210,7 @@ class NotaServiceTest {
 
     @Test
     void procesarLote_debeProcesarArchivoCsvExitosamente() {
-        String csvContent = "contenido\nTexto de prueba CSV 1\nTexto de prueba CSV 2\n";
+        String csvContent = "contenido\nTexto de prueba CSV numero uno con mas de 30 caracteres\nTexto de prueba CSV numero dos con mas de 30 caracteres\n";
         MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", csvContent.getBytes(StandardCharsets.UTF_8));
 
         FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
@@ -218,16 +218,16 @@ class NotaServiceTest {
 
         Nota n1 = new Nota();
         n1.setId(1L);
-        n1.setContenidoOriginal("Texto de prueba CSV 1");
+        n1.setContenidoOriginal("Texto de prueba CSV numero uno con mas de 30 caracteres");
 
         Nota n2 = new Nota();
         n2.setId(2L);
-        n2.setContenidoOriginal("Texto de prueba CSV 2");
+        n2.setContenidoOriginal("Texto de prueba CSV numero dos con mas de 30 caracteres");
 
         when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
         when(notaRepository.saveAll(anyList())).thenReturn(List.of(n1, n2));
-        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, "Texto de prueba CSV 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
-        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, "Texto de prueba CSV 2", "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
+        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, "Texto de prueba CSV numero uno con mas de 30 caracteres", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
+        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, "Texto de prueba CSV numero dos con mas de 30 caracteres", "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
 
         LoteResponse response = notaService.procesarLote(file, null);
 

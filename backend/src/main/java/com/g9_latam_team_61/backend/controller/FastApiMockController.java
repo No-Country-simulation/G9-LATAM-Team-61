@@ -32,7 +32,14 @@ public class FastApiMockController {
     }
 
     @PostMapping("/predict")
-    public ResponseEntity<FastApiResponse> mockPredict(@RequestBody(required = false) FastApiRequest request) {
+    public ResponseEntity<?> mockPredict(@RequestBody(required = false) FastApiRequest request) {
+        if (request == null || request.contenido_crudo() == null || request.contenido_crudo().trim().isEmpty()
+                || request.contenido_crudo().length() < 30 || request.contenido_crudo().length() > 5000) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "detail", "Validación fallida: el contenido_crudo debe tener entre 30 y 5000 caracteres"
+            ));
+        }
+
         FastApiResponse response = new FastApiResponse(
                 "DevOps",
                 0.94,
@@ -43,8 +50,21 @@ public class FastApiMockController {
     }
 
     @PostMapping("/predict/lote")
-    public ResponseEntity<List<FastApiResponse>> mockPredictLote(@RequestBody(required = false) Map<String, List<String>> payload) {
-        List<String> textos = (payload != null && payload.containsKey("textos")) ? payload.get("textos") : List.of();
+    public ResponseEntity<?> mockPredictLote(@RequestBody(required = false) Map<String, List<String>> payload) {
+        if (payload == null || !payload.containsKey("textos") || payload.get("textos") == null || payload.get("textos").isEmpty()) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "detail", "Validación fallida: lista de textos es requerida"
+            ));
+        }
+
+        List<String> textos = payload.get("textos");
+        for (String t : textos) {
+            if (t == null || t.trim().isEmpty() || t.length() < 30 || t.length() > 5000) {
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                        "detail", "Validación fallida: cada texto debe tener entre 30 y 5000 caracteres"
+                ));
+            }
+        }
         
         List<FastApiResponse> resultados = textos.stream()
                 .map(t -> new FastApiResponse("DevOps", 0.94, List.of("Docker", "Cluster"), 3.2))
