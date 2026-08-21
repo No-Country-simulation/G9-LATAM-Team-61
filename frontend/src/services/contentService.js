@@ -35,10 +35,12 @@ export async function classifyContent(formData, apiUrl = DEFAULT_API_URL, forceD
     apiUrl
   );
 
+  const rawBody = data.contenidoOriginal || data.descripcion || content;
+
   return {
     id: data.id,
-    title: sanitizeInput(inferTitleFromContent(data.contenidoOriginal || content)),
-    content: sanitizeInput(data.contenidoOriginal || content),
+    title: sanitizeInput(inferTitleFromContent(rawBody)),
+    content: sanitizeInput(rawBody),
     category: data.categoria || 'Otros',
     confidence: data.probabilidad !== undefined ? `${(data.probabilidad * 100).toFixed(1)}%` : '85.0%',
     probability: data.probabilidad || 0.85,
@@ -59,10 +61,12 @@ export async function uploadBatchLote(textos = [], apiUrl = DEFAULT_API_URL) {
 
   const validTextos = textos
     .map((t) => (typeof t === 'string' ? t.trim() : ''))
-    .filter((t) => t.length >= MIN_CONTENT_LENGTH);
+    .filter((t) => t.length >= MIN_CONTENT_LENGTH && t.length <= MAX_CONTENT_LENGTH);
 
   if (validTextos.length === 0) {
-    throw new Error(`Ningún texto cumple con el mínimo de ${MIN_CONTENT_LENGTH} caracteres requerido.`);
+    throw new Error(
+      `Ningún texto cumple con el rango válido requerido (${MIN_CONTENT_LENGTH} a ${MAX_CONTENT_LENGTH} caracteres).`
+    );
   }
 
   if (IS_MOCK_MODE) {
@@ -104,39 +108,41 @@ export async function sendFeedback(id, { categoriaSugerida, comentario }, apiUrl
       method: 'POST',
       body: JSON.stringify({
         categoriaSugerida,
-        comentario: comentario || `Categoría corregida a ${categoriaSugerida}`,
+        comentario: comentario || `Categoría corregida a ${categoriaSugerida} por el usuario`,
       }),
     },
-    10000,
+    8000,
     apiUrl
   );
 }
 
 /**
- * Fetch Recommended Documents by Tag Overlap (GET /api/contenido/{id}/recomendados)
+ * Fetch Recommended Similar Notes (GET /api/contenido/{id}/recomendados)
  */
-export async function fetchRecommendations(id, apiUrl = DEFAULT_API_URL) {
-  if (!id) return [];
+export async function fetchRecommendations(id, limit = 5, apiUrl = DEFAULT_API_URL) {
+  if (!id) {
+    throw new Error('Se requiere un ID de documento para obtener recomendaciones');
+  }
 
   if (IS_MOCK_MODE) {
     return getMockRecommendations(id);
   }
 
   try {
-    const data = await request(`/contenido/${id}/recomendados`, { method: 'GET' }, 8000, apiUrl);
-    if (!Array.isArray(data)) return [];
-
-    return data.map((item) => ({
-      id: item.id,
-      title: sanitizeInput(inferTitleFromContent(item.contenidoOriginal)),
-      content: sanitizeInput(item.contenidoOriginal),
-      category: item.categoria || 'Otros',
-      confidence: item.probabilidad !== undefined ? `${(item.probabilidad * 100).toFixed(1)}%` : '85.0%',
-      tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : '',
-      date: item.fechaAnalisis ? new Date(item.fechaAnalisis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoy',
-    }));
+    const data = await request(`/contenido/${id}/recomendados?limit=${limit}`, { method: 'GET' }, 8000, apiUrl);
+    const list = Array.isArray(data) ? data : data.recomendaciones || data.items || [];
+    return list.map((item) => {
+      const rawText = item.contenidoOriginal || item.descripcion || '';
+      return {
+        id: item.id,
+        title: sanitizeInput(inferTitleFromContent(rawText)),
+        content: sanitizeInput(rawText),
+        category: item.categoria || 'General',
+        tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : item.tags || '',
+        similarity: item.similitud ? `${Math.round(item.similitud * 100)}%` : '80%',
+      };
+    });
   } catch (err) {
-    console.warn('Error obteniendo recomendaciones:', err);
-    return [];
+    throw new Error(`Error obteniendo recomendaciones: ${err.message || 'Servicio no disponible'}`);
   }
 }

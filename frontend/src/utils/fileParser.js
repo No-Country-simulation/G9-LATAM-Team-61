@@ -1,23 +1,23 @@
 /**
- * File Parser Utility for CSV, JSON and TXT Batch Ingestion
+ * File Parser Utility for CSV, JSON and TXT Batch Ingestion (30 - 5000 chars)
  */
 
-export function parseBatchFileContent(content, name, minChars = 30) {
+export function parseBatchFileContent(content, name, minChars = 30, maxChars = 5000) {
   if (!content || typeof content !== 'string') {
-    return { texts: [], error: 'El archivo está vacío o el formato no es válido.' };
+    return { texts: [], rejectedCount: 0, error: 'El archivo está vacío o el formato no es válido.' };
   }
 
   try {
-    let texts = [];
+    let rawItems = [];
 
     if (name.toLowerCase().endsWith('.json')) {
       const json = JSON.parse(content);
       if (Array.isArray(json)) {
-        texts = json
-          .map((item) => (typeof item === 'string' ? item : item.descripcion || item.texto || item.contenido || ''))
-          .filter((t) => t && t.trim().length >= minChars);
+        rawItems = json.map((item) =>
+          typeof item === 'string' ? item : item.descripcion || item.texto || item.contenido || ''
+        );
       } else if (json.textos && Array.isArray(json.textos)) {
-        texts = json.textos.filter((t) => typeof t === 'string' && t.trim().length >= minChars);
+        rawItems = json.textos.filter((t) => typeof t === 'string');
       }
     } else {
       // CSV or plain TXT
@@ -29,23 +29,37 @@ export function parseBatchFileContent(content, name, minChars = 30) {
           trimmed = trimmed.substring(1, trimmed.length - 1);
         }
         const lower = trimmed.toLowerCase();
-        if (trimmed.length >= minChars && !lower.startsWith('descripcion') && !lower.startsWith('contenido')) {
-          texts.push(trimmed);
+        if (trimmed && !lower.startsWith('descripcion') && !lower.startsWith('contenido')) {
+          rawItems.push(trimmed);
         }
+      }
+    }
+
+    const texts = [];
+    let rejectedCount = 0;
+
+    for (const item of rawItems) {
+      const trimmed = typeof item === 'string' ? item.trim() : '';
+      if (trimmed.length >= minChars && trimmed.length <= maxChars) {
+        texts.push(trimmed);
+      } else if (trimmed.length > 0) {
+        rejectedCount++;
       }
     }
 
     if (texts.length === 0) {
       return {
         texts: [],
-        error: `No se encontraron textos válidos (mínimo ${minChars} caracteres por nota) en el archivo.`,
+        rejectedCount,
+        error: `No se encontraron textos válidos (${minChars} a ${maxChars} caracteres) en el archivo.`,
       };
     }
 
-    return { texts, error: null };
-  } catch (err) {
+    return { texts, rejectedCount, error: null };
+  } catch {
     return {
       texts: [],
+      rejectedCount: 0,
       error: 'Error al parsear el archivo. Verifica que la codificación sea UTF-8 y el formato CSV/JSON sea válido.',
     };
   }

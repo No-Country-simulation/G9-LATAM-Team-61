@@ -4,7 +4,7 @@ import Card from '../common/Card';
 /**
  * Cluster Widget Component (Tendencias K-Means)
  */
-export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClusters, isApiLive = true }) {
+export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClusters }) {
   const previewClusters = (clusters || []).slice(0, 3);
 
   return (

@@ -32,14 +32,18 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const { texts, error } = parseBatchFileContent(event.target.result, file.name);
+      const { texts, rejectedCount, error } = parseBatchFileContent(event.target.result, file.name);
       if (error) {
         setErrorMessage(error);
         setParsedTexts([]);
       } else {
         setParsedTexts(texts);
         setFileName(file.name);
-        setErrorMessage('');
+        setErrorMessage(
+          rejectedCount > 0
+            ? `Se cargaron ${texts.length} notas válidas. Se omitieron ${rejectedCount} elementos por no cumplir el rango de 30 a 5,000 caracteres.`
+            : ''
+        );
       }
     };
     reader.readAsText(file);

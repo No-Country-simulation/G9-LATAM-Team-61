@@ -11,7 +11,7 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
   try {
     const data = await request('/health', { method: 'GET' }, 3000, apiUrl);
     return data && (data.status === 'UP' || data.status === 'OK' || data.fastapiStatus === 'UP');
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -29,31 +29,29 @@ export async function fetchHistory(categoryFilter = '', page = 0, size = 20, api
     url += `&categoria=${encodeURIComponent(categoryFilter)}`;
   }
 
-  try {
-    const data = await request(url, { method: 'GET' }, 5000, apiUrl);
-    const content = data.content || data.items || (Array.isArray(data) ? data : []);
+  const data = await request(url, { method: 'GET' }, 8000, apiUrl);
+  const content = data.content || data.items || (Array.isArray(data) ? data : []);
 
-    const mapped = content.map((item) => ({
+  const mapped = content.map((item) => {
+    const rawText = item.contenidoOriginal || item.descripcion || '';
+    return {
       id: item.id,
-      title: sanitizeInput(inferTitleFromContent(item.contenidoOriginal)),
-      content: sanitizeInput(item.contenidoOriginal),
+      title: sanitizeInput(inferTitleFromContent(rawText)),
+      content: sanitizeInput(rawText),
       category: item.categoria || 'Otros',
       confidence: item.probabilidad !== undefined ? `${(item.probabilidad * 100).toFixed(1)}%` : '85.0%',
       tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : '',
       date: item.fechaAnalisis ? new Date(item.fechaAnalisis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoy',
       latencyMs: item.tiempoProcesamientoMs || null,
       feedback: item.feedbackUsuario || null,
-    }));
-
-    return {
-      items: mapped,
-      totalElements: data.totalElements !== undefined ? data.totalElements : mapped.length,
-      totalPages: data.totalPages !== undefined ? data.totalPages : 1,
     };
-  } catch (err) {
-    console.warn('Error fetching history:', err);
-    return { items: INITIAL_DOCUMENTS, totalElements: INITIAL_DOCUMENTS.length, totalPages: 1 };
-  }
+  });
+
+  return {
+    items: mapped,
+    totalElements: data.totalElements !== undefined ? data.totalElements : mapped.length,
+    totalPages: data.totalPages !== undefined ? data.totalPages : 1,
+  };
 }
 
 /**
@@ -73,25 +71,23 @@ export async function searchContent(query, apiUrl = DEFAULT_API_URL) {
     );
   }
 
-  try {
-    const data = await request(`/buscar?q=${encodeURIComponent(cleanQ)}`, { method: 'GET' }, 8000, apiUrl);
-    if (!Array.isArray(data)) return [];
+  const data = await request(`/buscar?q=${encodeURIComponent(cleanQ)}`, { method: 'GET' }, 8000, apiUrl);
+  if (!Array.isArray(data)) return [];
 
-    return data.map((item) => ({
+  return data.map((item) => {
+    const rawText = item.contenidoOriginal || item.descripcion || '';
+    return {
       id: item.id,
-      title: sanitizeInput(inferTitleFromContent(item.contenidoOriginal)),
-      content: sanitizeInput(item.contenidoOriginal),
+      title: sanitizeInput(inferTitleFromContent(rawText)),
+      content: sanitizeInput(rawText),
       category: item.categoria || 'Otros',
       confidence: item.probabilidad !== undefined ? `${(item.probabilidad * 100).toFixed(1)}%` : '85.0%',
       tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : '',
       date: item.fechaAnalisis ? new Date(item.fechaAnalisis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoy',
       latencyMs: item.tiempoProcesamientoMs || null,
       feedback: item.feedbackUsuario || null,
-    }));
-  } catch (err) {
-    console.warn('Error en búsqueda semántica:', err);
-    return [];
-  }
+    };
+  });
 }
 
 /**
@@ -99,64 +95,63 @@ export async function searchContent(query, apiUrl = DEFAULT_API_URL) {
  */
 export async function triggerReclustering(nClusters = null, apiUrl = DEFAULT_API_URL) {
   if (IS_MOCK_MODE) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
     return getMockClusters();
   }
 
-  const endpoint = nClusters ? `/contenido/agrupar?n_clusters=${nClusters}` : '/contenido/agrupar';
+  const payload = nClusters ? { n_clusters: nClusters } : {};
+  const data = await request(
+    '/contenido/agrupar',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    30000,
+    apiUrl
+  );
 
-  const data = await request(endpoint, { method: 'POST' }, 30000, apiUrl);
-
-  const mappedClusters = (data.clusters || []).map((c) => ({
-    id: c.id,
-    title: c.nombreSugerido || `Cluster ${c.id}`,
-    docsCount: c.totalDocumentos || 0,
-    tags: Array.isArray(c.palabrasClaveTop) ? c.palabrasClaveTop.slice(0, 6).join(', ') : '',
-    date: c.fechaGeneracion,
+  const rawClusters = data.clusters || (Array.isArray(data) ? data : []);
+  const mappedClusters = rawClusters.map((c, idx) => ({
+    id: c.id !== undefined ? c.id : idx,
+    title: c.nombreSugerido || c.etiqueta_sugerida || c.title || `Cluster #${idx + 1}`,
+    tags: Array.isArray(c.palabrasClaveTop || c.palabras_clave)
+      ? (c.palabrasClaveTop || c.palabras_clave).join(', ')
+      : c.tags || '',
+    docsCount: c.totalDocumentos || c.tamano || c.docsCount || 0,
+    updated: 'Recién generado',
+    docs: Array.isArray(c.documentos) ? c.documentos : [],
   }));
 
   return {
     n_clusters: data.n_clusters || mappedClusters.length,
     n_documentos: data.n_documentos || 0,
+    tiempo_procesamiento_ms: data.tiempo_procesamiento_ms || null,
     clusters: mappedClusters,
-    tiempo_procesamiento_ms: data.tiempo_procesamiento_ms,
   };
 }
 
 /**
- * Fetch Category Counts (GET /api/categorias)
+ * Fetch Cluster Statistics and Top Categories (GET /api/contenido/stats)
  */
-export async function fetchCategories(apiUrl = DEFAULT_API_URL) {
+export async function fetchStats(apiUrl = DEFAULT_API_URL) {
   if (IS_MOCK_MODE) {
-    return [
-      { categoria: 'DevOps', total: 0 },
-      { categoria: 'Backend', total: 0 },
-      { categoria: 'Frontend', total: 0 },
-      { categoria: 'Data Science', total: 0 },
-      { categoria: 'Mobile', total: 0 },
-      { categoria: 'Otros', total: 0 },
-    ];
+    return {
+      totalDocumentos: INITIAL_DOCUMENTS.length,
+      promedioConfianza: 92.4,
+      tiempoPromedioMs: 42.1,
+      distribucionCategorias: { DevOps: 2, Backend: 2, Frontend: 1, 'Data Science': 1 },
+    };
   }
 
-  try {
-    const data = await request('/categorias', { method: 'GET' }, 5000, apiUrl);
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    console.warn('Error obteniendo categorías:', err);
-    return [];
-  }
+  return request('/contenido/stats', { method: 'GET' }, 5000, apiUrl);
 }
 
 /**
- * Fetch Aggregated Stats (GET /api/contenido/stats)
+ * Fetch Dynamic Categories List (GET /api/categorias)
  */
-export async function fetchStats(apiUrl = DEFAULT_API_URL) {
-  if (IS_MOCK_MODE) return null;
-
-  try {
-    return await request('/contenido/stats', { method: 'GET' }, 5000, apiUrl);
-  } catch (err) {
-    console.warn('Error obteniendo estadísticas:', err);
-    return null;
+export async function fetchCategories(apiUrl = DEFAULT_API_URL) {
+  if (IS_MOCK_MODE) {
+    return ['DevOps', 'Backend', 'Frontend', 'Data Science', 'Mobile', 'Otros'];
   }
+
+  return request('/categorias', { method: 'GET' }, 5000, apiUrl);
 }

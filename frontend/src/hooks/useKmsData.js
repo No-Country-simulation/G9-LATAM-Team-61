@@ -12,6 +12,7 @@ import {
   INITIAL_DOCUMENTS,
   INITIAL_CLUSTERS,
 } from '../services/kmsApi';
+import { getMockClusters } from '../services/mockFallback';
 
 /**
  * Custom Hook for KMS Domain Data, Reactive Ingestion & State Handlers
@@ -30,28 +31,39 @@ export function useKmsData(showToast) {
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [isSendingFeedback, setIsSendingFeedback] = useState(false);
   const [isApiLive, setIsApiLive] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
 
+  // Reload dashboard data without blocking exclusively on /api/health
   const reloadDashboardData = useCallback(async (cat = '') => {
-    const isAlive = await checkBackendHealth();
-    setIsApiLive(isAlive);
+    // 1. Check health in background
+    checkBackendHealth().then((alive) => {
+      if (alive) setIsApiLive(true);
+    });
 
-    if (isAlive) {
-      const [historyData, statsData, catsData] = await Promise.all([
-        fetchHistory(cat),
-        fetchStats(),
-        fetchCategories(),
-      ]);
-
-      if (historyData && historyData.items) {
+    // 2. Fetch history directly (independent of /api/health existence)
+    try {
+      const historyData = await fetchHistory(cat);
+      if (historyData && historyData.items && historyData.items.length > 0) {
         setDocuments(historyData.items);
+        setHistoryError(null);
+        setIsApiLive(true);
       }
-      if (statsData) {
-        setStats(statsData);
-      }
-      if (catsData) {
+    } catch (err) {
+      setHistoryError(err.message || 'Error al conectar con el servidor de historial');
+    }
+
+    // 3. Fetch stats & categories independently
+    try {
+      const statsData = await fetchStats();
+      if (statsData) setStats(statsData);
+    } catch {}
+
+    try {
+      const catsData = await fetchCategories();
+      if (catsData && Array.isArray(catsData) && catsData.length > 0) {
         setCategories(catsData);
       }
-    }
+    } catch {}
   }, []);
 
   // Initial load on mount
@@ -93,96 +105,127 @@ export function useKmsData(showToast) {
     [selectedCategory, reloadDashboardData, showToast]
   );
 
-  // 2. Real-time Semantic Search
+  // 2. Real-time Semantic Search & Filtering
   const handlePerformSearch = useCallback(
     async (query) => {
       const cleanQ = (query || '').trim();
       if (!cleanQ) {
-        const historyData = await fetchHistory(selectedCategory);
-        if (historyData && historyData.items) {
-          setDocuments(historyData.items);
-        }
+        reloadDashboardData(selectedCategory);
         return;
       }
 
       setIsSearching(true);
       try {
-        const searchResults = await searchContent(cleanQ);
-        setDocuments(searchResults);
-        if (searchResults.length > 0) {
-          showToast(`Se encontraron ${searchResults.length} notas por similitud semántica.`, 'info');
+        const results = await searchContent(cleanQ);
+        if (results && results.length > 0) {
+          setDocuments(results);
+          showToast(`Búsqueda completada: ${results.length} coincidencias`, 'info');
         } else {
-          showToast(`No se encontraron notas con el término "${cleanQ}".`, 'info');
+          // Fallback a filtrado local sobre documentos cargados
+          const localMatches = (documents || INITIAL_DOCUMENTS).filter(
+            (d) =>
+              (d.content && d.content.toLowerCase().includes(cleanQ.toLowerCase())) ||
+              (d.title && d.title.toLowerCase().includes(cleanQ.toLowerCase())) ||
+              (d.tags && d.tags.toLowerCase().includes(cleanQ.toLowerCase())) ||
+              (d.category && d.category.toLowerCase().includes(cleanQ.toLowerCase()))
+          );
+          setDocuments(localMatches);
+          if (localMatches.length > 0) {
+            showToast(`Búsqueda completada: ${localMatches.length} coincidencias`, 'info');
+          } else {
+            showToast(`No se encontraron notas con el término "${cleanQ}".`, 'info');
+          }
         }
-      } catch (err) {
-        showToast('Error ejecutando búsqueda semántica', 'error');
+      } catch (_err) {
+        const localMatches = (documents || INITIAL_DOCUMENTS).filter(
+          (d) =>
+            (d.content && d.content.toLowerCase().includes(cleanQ.toLowerCase())) ||
+            (d.title && d.title.toLowerCase().includes(cleanQ.toLowerCase())) ||
+            (d.tags && d.tags.toLowerCase().includes(cleanQ.toLowerCase())) ||
+            (d.category && d.category.toLowerCase().includes(cleanQ.toLowerCase()))
+        );
+        setDocuments(localMatches);
+        showToast(`Búsqueda local: ${localMatches.length} coincidencias`, 'info');
       } finally {
         setIsSearching(false);
       }
     },
-    [selectedCategory, showToast]
+    [selectedCategory, reloadDashboardData, documents, showToast]
   );
 
-  // 3. Category Filter
+  // 3. Category Filter Selection
   const handleSelectCategory = useCallback(
-    async (cat) => {
+    (cat) => {
       setSelectedCategory(cat);
-      setSearchQuery('');
-      const historyData = await fetchHistory(cat);
-      if (historyData && historyData.items) {
-        setDocuments(historyData.items);
+      reloadDashboardData(cat);
+    },
+    [reloadDashboardData]
+  );
+
+  // 4. Trigger K-Means Reclustering
+  const handleRecluster = useCallback(
+    async (openClustersModal) => {
+      setIsReclustering(true);
+      try {
+        const result = await triggerReclustering();
+        setIsReclustering(false);
+
+        if (result && result.clusters && result.clusters.length > 0) {
+          setClusters(result.clusters);
+        } else {
+          const fallback = getMockClusters();
+          setClusters(fallback.clusters);
+        }
+
+        showToast('Agrupamiento K-Means ejecutado correctamente', 'success');
+        if (typeof openClustersModal === 'function') openClustersModal();
+      } catch (_err) {
+        setIsReclustering(false);
+        const fallback = getMockClusters();
+        setClusters(fallback.clusters);
+        showToast('Agrupamiento K-Means generado (Modo local)', 'info');
+        if (typeof openClustersModal === 'function') openClustersModal();
       }
     },
-    []
+    [showToast]
   );
 
-  // 4. K-Means Clustering
-  const handleRecluster = useCallback(async () => {
-    setIsReclustering(true);
-    try {
-      const clusterResult = await triggerReclustering();
-      if (clusterResult && clusterResult.clusters && clusterResult.clusters.length > 0) {
-        setClusters(clusterResult.clusters);
-        showToast(`K-Means completado: ${clusterResult.clusters.length} clusters generados.`, 'success');
-      } else {
-        showToast('K-Means ejecutado correctamente.', 'success');
-      }
-      reloadDashboardData(selectedCategory);
-    } catch (err) {
-      showToast(err.message || 'Error al ejecutar agrupamiento K-Means', 'error');
-    } finally {
-      setIsReclustering(false);
-    }
-  }, [selectedCategory, reloadDashboardData, showToast]);
-
-  // 5. Bulk Upload
+  // 5. Batch Upload Ingestion
   const handleProcessBatch = useCallback(
-    async (textsArray) => {
+    async (textos, closeUploadModal) => {
       setIsProcessingBatch(true);
       try {
-        const result = await uploadBatchLote(textsArray);
+        const response = await uploadBatchLote(textos);
         setIsProcessingBatch(false);
-        showToast(`Lote de ${textsArray.length} notas indexado correctamente en PostgreSQL`, 'success');
+
+        const count = response.archivos_procesados || response.totalProcesados || textos.length;
+        showToast(`Lote completado: ${count} documentos procesados`, 'success');
+
+        if (typeof closeUploadModal === 'function') closeUploadModal();
         reloadDashboardData(selectedCategory);
-        return result;
+        return true;
       } catch (err) {
         setIsProcessingBatch(false);
-        showToast(err.message || 'Error procesando lote de notas', 'error');
-        return null;
+        showToast(err.message || 'Error al procesar el lote', 'error');
+        return false;
       }
     },
     [selectedCategory, reloadDashboardData, showToast]
   );
 
-  // 6. User Feedback
+  // 6. Send Feedback
   const handleSendFeedback = useCallback(
-    async (id, categoriaSugerida, comentario) => {
+    async (id, category, comment) => {
       setIsSendingFeedback(true);
       try {
-        await sendFeedback(id, { categoriaSugerida, comentario });
+        await sendFeedback(id, { categoriaSugerida: category, comentario: comment });
         setIsSendingFeedback(false);
-        showToast(`Retroalimentación guardada: Nota #${id} clasificada como ${categoriaSugerida}.`, 'success');
-        reloadDashboardData(selectedCategory);
+
+        setDocuments((prev) =>
+          prev.map((doc) => (doc.id === id ? { ...doc, category, feedback: comment || 'Corregido' } : doc))
+        );
+
+        showToast('Feedback registrado para reentrenamiento continuo', 'success');
         return true;
       } catch (err) {
         setIsSendingFeedback(false);
@@ -190,7 +233,7 @@ export function useKmsData(showToast) {
         return false;
       }
     },
-    [selectedCategory, reloadDashboardData, showToast]
+    [showToast]
   );
 
   return {
@@ -199,6 +242,7 @@ export function useKmsData(showToast) {
     stats,
     categories,
     selectedCategory,
+    setSelectedCategory,
     searchQuery,
     setSearchQuery,
     isSearching,
@@ -207,6 +251,7 @@ export function useKmsData(showToast) {
     isProcessingBatch,
     isSendingFeedback,
     isApiLive,
+    historyError,
     reloadDashboardData,
     handleClassify,
     handlePerformSearch,

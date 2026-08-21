@@ -42,7 +42,7 @@ export function useModals(showToast) {
       try {
         const recs = await fetchRecommendations(doc.id);
         setRecommendations(recs);
-      } catch (err) {
+      } catch {
         if (showToast) {
           showToast('No se pudieron obtener recomendaciones para este documento', 'error');
         }

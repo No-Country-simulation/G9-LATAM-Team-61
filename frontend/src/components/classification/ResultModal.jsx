@@ -16,7 +16,7 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
       setShowCorrectionSelect(false);
       setCurrentCategory(resultData.category || 'Otros');
     }
-  }, [isOpen, resultData?.id, resultData?.category, resultData?.feedback]);
+  }, [isOpen, resultData]);
 
   if (!isOpen || !resultData) return null;
 
