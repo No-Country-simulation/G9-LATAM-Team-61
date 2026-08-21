@@ -243,14 +243,38 @@ class NotaServiceTest {
     }
 
     @Test
-    void procesarLote_debeLanzarExcepcion_siCardinalidadDeRespuestaNoCoincide() {
+    void procesarLote_debeLanzarExcepcion_siRespuestaDeMlClientEsNula() {
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres"
+        ));
+
+        when(mlClient.analizarLote(anyList())).thenReturn(null);
+
+        assertThrows(MlServiceException.class, () -> notaService.procesarLote(null, request));
+    }
+
+    @Test
+    void procesarLote_debeLanzarExcepcion_siCardinalidadDeRespuestaEsMenorQueSolicitud() {
         LoteRequest request = new LoteRequest(List.of(
                 "Texto de prueba masivo numero uno con mas de 30 caracteres",
                 "Texto de prueba masivo numero dos con mas de 30 caracteres"
         ));
 
         FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
-        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1)); // Returns 1 response for 2 texts
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1)); // Sent 2, received 1
+
+        assertThrows(MlServiceException.class, () -> notaService.procesarLote(null, request));
+    }
+
+    @Test
+    void procesarLote_debeLanzarExcepcion_siCardinalidadDeRespuestaEsMayorQueSolicitud() {
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres"
+        ));
+
+        FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
+        FastApiResponse res2 = new FastApiResponse("Backend", 0.88, List.of("spring"), 3.5);
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2)); // Sent 1, received 2
 
         assertThrows(MlServiceException.class, () -> notaService.procesarLote(null, request));
     }
