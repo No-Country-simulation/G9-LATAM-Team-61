@@ -31,8 +31,8 @@ public class FastApiMockController {
         ));
     }
 
-    @PostMapping("/analizar")
-    public ResponseEntity<FastApiResponse> mockAnalizar(@RequestBody(required = false) FastApiRequest request) {
+    @PostMapping("/predict")
+    public ResponseEntity<FastApiResponse> mockPredict(@RequestBody(required = false) FastApiRequest request) {
         FastApiResponse response = new FastApiResponse(
                 "DevOps",
                 0.94,
@@ -43,7 +43,7 @@ public class FastApiMockController {
     }
 
     @PostMapping("/predict/lote")
-    public ResponseEntity<List<FastApiResponse>> mockAnalizarLote(@RequestBody(required = false) Map<String, List<String>> payload) {
+    public ResponseEntity<List<FastApiResponse>> mockPredictLote(@RequestBody(required = false) Map<String, List<String>> payload) {
         List<String> textos = (payload != null && payload.containsKey("textos")) ? payload.get("textos") : List.of();
         
         List<FastApiResponse> resultados = textos.stream()

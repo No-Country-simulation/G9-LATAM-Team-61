@@ -20,7 +20,7 @@ public class MlClient {
 
         try {
             response = fastApiClient.post()
-                    .uri("/analizar")
+                    .uri("/predict")
                     .body(new FastApiRequest(contenido))
                     .retrieve()
                     .body(FastApiResponse.class);
