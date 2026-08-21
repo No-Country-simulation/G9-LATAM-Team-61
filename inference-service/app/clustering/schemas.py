@@ -1,7 +1,8 @@
 # app/clustering/schemas.py
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from app.config import MAX_CLUSTERING_DOCS
 
 class DocumentoCluster(BaseModel):
     """Un documento para clusterizar"""
@@ -9,18 +10,20 @@ class DocumentoCluster(BaseModel):
     texto: str = Field(..., min_length=3, max_length=5000)
     metadata: Optional[Dict[str, Any]] = None
     
-    @validator('texto')
-    def validar_texto(cls, v):
+    @field_validator('texto')
+    @classmethod
+    def validar_texto(cls, v: str) -> str:
         if len(v.strip()) < 3:
             raise ValueError('El texto debe tener al menos 3 caracteres')
-        return v
+        return v.strip()
 
 class ClusteringRequest(BaseModel):
     """Solicitud de clustering"""
     documentos: List[DocumentoCluster] = Field(
         ..., 
-        min_items=2,
-        description="Lista de documentos a clusterizar (mínimo 2)"
+        min_length=2,
+        max_length=MAX_CLUSTERING_DOCS,
+        description=f"Lista de documentos a clusterizar (mínimo 2, máximo {MAX_CLUSTERING_DOCS})"
     )
     n_clusters: Optional[int] = Field(
         None, 
@@ -41,9 +44,9 @@ class ClusterInfo(BaseModel):
     """Información de un cluster"""
     cluster_id: int
     tamano: int
-    palabras_clave: List[str] = Field(..., max_items=10)
+    palabras_clave: List[str] = Field(..., max_length=10)
     etiqueta_sugerida: str
-    documentos: List[str] = Field(..., max_items=5)  # Top 5 documentos
+    documentos: List[str] = Field(..., max_length=5)  # Top 5 documentos
 
 class ClusteringResponse(BaseModel):
     """Respuesta de clustering"""

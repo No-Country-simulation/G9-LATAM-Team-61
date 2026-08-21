@@ -1,10 +1,13 @@
 import re
 import time
+import logging
 from fastapi import HTTPException
 from app.model_loader import loader
 from app.config import TRANSLATOR_BACKEND, TRANSLATE_TARGET_LANG, KEYWORDS_TOP_N
 from app.translator import TranslatorService
 from app.keywords import extract_keywords
+
+logger = logging.getLogger(__name__)
 
 def limpiar_texto_unitario(texto: str) -> str:
     if not isinstance(texto, str):
@@ -20,9 +23,9 @@ class Predictor:
 
     def predict(self, text: str) -> dict:
         """
-        Realiza una inferencia sobre el texto ingresado:
-        1. Aplica sanitización estructural y valida umbral analítico.
-        2. Traduce texto ES -> EN mediante TranslatorService.
+        Realiza una inferencia sobre el texto técnico prevalidado:
+        1. Sanitiza texto estructuralmente.
+        2. Traduce texto ES -> EN mediante TranslatorService si está habilitado.
         3. Ejecuta predicción sobre el Pipeline scikit-learn.
         4. Calcula probabilidad de confianza y extrae palabras clave.
         5. Registra el tiempo exacto de procesamiento (tiempo_procesamiento_ms).
@@ -32,27 +35,10 @@ class Predictor:
         if not loader.is_loaded:
             raise HTTPException(
                 status_code=503,
-                detail="El modelo de IA aún no está cargado."
+                detail="El modelo de IA aún no está disponible."
             )
 
-        raw_text = (text or '').strip() if isinstance(text, str) else ''
-        if not raw_text:
-            raise HTTPException(
-                status_code=400,
-                detail="El texto no puede estar vacío."
-            )
-
-        clean_text = limpiar_texto_unitario(raw_text)
-
-        # Umbral analítico acordado con Data (30 <= caracteres <= 5000)
-        if len(clean_text) < 30 or len(clean_text) > 5000:
-            elapsed_ms = round((time.time() - start_time) * 1000, 2)
-            return {
-                "categoria": "Otros",
-                "probabilidad": 0.0,
-                "palabras_clave": [],
-                "tiempo_procesamiento_ms": elapsed_ms
-            }
+        clean_text = limpiar_texto_unitario(text)
 
         try:
             # 1. Traducir texto si aplica
@@ -71,7 +57,7 @@ class Predictor:
                     idx = classes.index(predicted_class)
                     probabilidad = round(float(probas[idx]), 3)
 
-            # 4. Extracción de palabras clave sobre el texto original sanitizado (antes de la traducción)
+            # 4. Extracción de palabras clave sobre el texto original sanitizado
             keywords = extract_keywords(clean_text, top_n=KEYWORDS_TOP_N)
             elapsed_ms = round((time.time() - start_time) * 1000, 2)
 
@@ -82,10 +68,13 @@ class Predictor:
                 "tiempo_procesamiento_ms": elapsed_ms
             }
 
+        except HTTPException:
+            raise
         except Exception as e:
+            logger.error(f"Error interno durante la inferencia ML: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail=f"Error realizando la inferencia: {str(e)}"
+                detail="Error interno al procesar la inferencia."
             )
 
     def predict_batch(self, texts: list[str]) -> list[dict]:
