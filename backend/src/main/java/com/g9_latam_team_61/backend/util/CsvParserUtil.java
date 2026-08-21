@@ -11,6 +11,8 @@ public class CsvParserUtil {
 
     private static final int MIN_LENGTH = 30;
     private static final int MAX_LENGTH = 5000;
+    private static final int MAX_REGISTROS = 100;
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
     private CsvParserUtil() {
     }
@@ -18,6 +20,10 @@ public class CsvParserUtil {
     public static List<String> parsearCsv(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("El archivo CSV no puede estar vacío");
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("El tamaño del archivo CSV no puede superar los 5 MB");
         }
 
         List<String> lineas = new ArrayList<>();
@@ -44,6 +50,10 @@ public class CsvParserUtil {
                 }
 
                 lineas.add(textoLimpio);
+
+                if (lineas.size() > MAX_REGISTROS) {
+                    throw new IllegalArgumentException("El archivo CSV no puede contener más de " + MAX_REGISTROS + " registros");
+                }
             }
         } catch (IllegalArgumentException e) {
             throw e;

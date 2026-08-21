@@ -6,6 +6,7 @@ import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
+import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.dto.AgruparResponse;
 import com.g9_latam_team_61.backend.dto.CategoriaConteoResponse;
 import com.g9_latam_team_61.backend.dto.ClusterResponse;
@@ -66,7 +67,22 @@ public class NotaService {
             throw new IllegalArgumentException("Debe proporcionar un archivo CSV o un payload JSON con la lista de textos");
         }
 
+        if (textos.size() > 100) {
+            throw new IllegalArgumentException("El lote no puede superar el límite máximo de 100 textos");
+        }
+
+        for (int i = 0; i < textos.size(); i++) {
+            String t = textos.get(i);
+            if (t == null || t.trim().isEmpty() || t.length() < 30 || t.length() > 5000) {
+                throw new IllegalArgumentException("El texto en la posición " + (i + 1) + " debe tener entre 30 y 5000 caracteres");
+            }
+        }
+
         List<FastApiResponse> mlResultados = mlClient.analizarLote(textos);
+
+        if (mlResultados == null || mlResultados.size() != textos.size()) {
+            throw new MlServiceException("La cantidad de respuestas del servicio ML no coincide con la cantidad de textos enviados");
+        }
 
         List<Nota> notas = new ArrayList<>();
         double tiempoTotalMs = 0.0;
@@ -75,14 +91,18 @@ public class NotaService {
             String texto = textos.get(i);
             FastApiResponse res = mlResultados.get(i);
 
-            Double latencia = (res != null && res.tiempo_procesamiento_ms() != null) ? res.tiempo_procesamiento_ms() : 0.0;
+            if (res == null || res.categoria() == null || res.categoria().isBlank()) {
+                throw new MlServiceException("El servicio ML devolvió una respuesta incompleta para el registro " + (i + 1));
+            }
+
+            Double latencia = (res.tiempo_procesamiento_ms() != null) ? res.tiempo_procesamiento_ms() : 0.0;
             tiempoTotalMs += latencia;
 
             Nota nota = new Nota();
             nota.setContenidoOriginal(texto);
-            nota.setCategoria(res != null ? res.categoria() : "Otros");
-            nota.setProbabilidad(res != null && res.probabilidad() != null ? res.probabilidad() : 0.0);
-            nota.setPalabrasClave(res != null && res.palabras_clave() != null ? res.palabras_clave() : List.of());
+            nota.setCategoria(res.categoria());
+            nota.setProbabilidad(res.probabilidad() != null ? res.probabilidad() : 0.0);
+            nota.setPalabrasClave(res.palabras_clave() != null ? res.palabras_clave() : List.of());
             nota.setTiempoProcesamientoMs(latencia);
             notas.add(nota);
         }

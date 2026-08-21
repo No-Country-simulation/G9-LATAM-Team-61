@@ -57,6 +57,18 @@ class CsvParserUtilTest {
     }
 
     @Test
+    void parsearCsv_debeRechazarArchivoQueSupera100Registros() {
+        StringBuilder sb = new StringBuilder("contenido\n");
+        for (int i = 0; i < 101; i++) {
+            sb.append("Texto de prueba numero ").append(i).append(" con mas de 30 caracteres\n");
+        }
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", sb.toString().getBytes(StandardCharsets.UTF_8));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> CsvParserUtil.parsearCsv(file));
+        assertTrue(ex.getMessage().contains("no puede contener más de 100 registros"));
+    }
+
+    @Test
     void parsearCsv_debeLanzarExcepcion_siArchivoEsNuloOVacio() {
         MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.csv", "text/csv", new byte[0]);
 

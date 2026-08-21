@@ -43,6 +43,10 @@ public class MlClient {
     }
 
     public List<FastApiResponse> analizarLote(List<String> textos) {
+        if (textos == null || textos.isEmpty()) {
+            throw new IllegalArgumentException("La lista de textos no puede ser nula ni vacía");
+        }
+
         FastApiResponse[] responseArray;
 
         try {
@@ -64,6 +68,15 @@ public class MlClient {
 
         if (responseArray == null) {
             throw new MlServiceException("FastAPI no devolvió respuesta para el análisis en lote");
+        }
+
+        if (responseArray.length != textos.size()) {
+            throw new MlServiceException("La respuesta del servicio de inferencia no coincide en cantidad con la solicitud (esperados: "
+                    + textos.size() + ", recibidos: " + responseArray.length + ")");
+        }
+
+        for (FastApiResponse res : responseArray) {
+            validarRespuesta(res);
         }
 
         return List.of(responseArray);

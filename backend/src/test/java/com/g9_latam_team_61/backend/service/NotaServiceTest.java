@@ -182,23 +182,25 @@ class NotaServiceTest {
 
     @Test
     void procesarLote_debeProcesarPayloadJsonExitosamente() {
-        LoteRequest request = new LoteRequest(List.of("Texto técnico 1", "Texto técnico 2"));
+        String texto1 = "Texto tecnico de prueba numero uno con mas de 30 caracteres";
+        String texto2 = "Texto tecnico de prueba numero dos con mas de 30 caracteres";
+        LoteRequest request = new LoteRequest(List.of(texto1, texto2));
 
         FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
         FastApiResponse res2 = new FastApiResponse("Backend", 0.88, List.of("spring"), 3.5);
 
         Nota n1 = new Nota();
         n1.setId(1L);
-        n1.setContenidoOriginal("Texto técnico 1");
+        n1.setContenidoOriginal(texto1);
 
         Nota n2 = new Nota();
         n2.setId(2L);
-        n2.setContenidoOriginal("Texto técnico 2");
+        n2.setContenidoOriginal(texto2);
 
         when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1, res2));
         when(notaRepository.saveAll(anyList())).thenReturn(List.of(n1, n2));
-        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, "Texto técnico 1", "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
-        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, "Texto técnico 2", "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
+        when(notaMapper.toResponse(n1)).thenReturn(new NotaResponse(1L, texto1, "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2));
+        when(notaMapper.toResponse(n2)).thenReturn(new NotaResponse(2L, texto2, "Backend", 0.88, List.of("spring"), LocalDateTime.now(), 3.5));
 
         LoteResponse response = notaService.procesarLote(null, request);
 
@@ -238,6 +240,51 @@ class NotaServiceTest {
     @Test
     void procesarLote_debeLanzarExcepcion_siNoSeProveenEntradas() {
         assertThrows(IllegalArgumentException.class, () -> notaService.procesarLote(null, null));
+    }
+
+    @Test
+    void procesarLote_debeLanzarExcepcion_siCardinalidadDeRespuestaNoCoincide() {
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres",
+                "Texto de prueba masivo numero dos con mas de 30 caracteres"
+        ));
+
+        FastApiResponse res1 = new FastApiResponse("DevOps", 0.94, List.of("docker"), 3.2);
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(res1)); // Returns 1 response for 2 texts
+
+        assertThrows(MlServiceException.class, () -> notaService.procesarLote(null, request));
+    }
+
+    @Test
+    void procesarLote_debeLanzarExcepcion_siRespuestaMLTieneCategoriaNulaOVacia() {
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres"
+        ));
+
+        FastApiResponse resInvalido = new FastApiResponse("", 0.94, List.of("docker"), 3.2);
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(resInvalido));
+
+        assertThrows(MlServiceException.class, () -> notaService.procesarLote(null, request));
+    }
+
+    @Test
+    void procesarLote_debePersistirCategoriaOtros_unicamenteSiElModeloLaProduce() {
+        LoteRequest request = new LoteRequest(List.of(
+                "Texto de prueba masivo numero uno con mas de 30 caracteres"
+        ));
+
+        FastApiResponse resOtros = new FastApiResponse("Otros", 0.75, List.of("general"), 4.0);
+        Nota notaGuardada = new Nota();
+        notaGuardada.setId(1L);
+        notaGuardada.setCategoria("Otros");
+
+        when(mlClient.analizarLote(anyList())).thenReturn(List.of(resOtros));
+        when(notaRepository.saveAll(anyList())).thenReturn(List.of(notaGuardada));
+        when(notaMapper.toResponse(notaGuardada)).thenReturn(new NotaResponse(1L, "Texto", "Otros", 0.75, List.of("general"), LocalDateTime.now(), 4.0));
+
+        LoteResponse response = notaService.procesarLote(null, request);
+
+        assertEquals("Otros", response.resultados().get(0).categoria());
     }
 
     @Test
