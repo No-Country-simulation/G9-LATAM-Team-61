@@ -6,9 +6,11 @@ import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
 import com.g9_latam_team_61.backend.client.MlClient;
 import com.g9_latam_team_61.backend.client.MlResult;
+import com.g9_latam_team_61.backend.client.MlServiceException;
 import com.g9_latam_team_61.backend.dto.FeedbackRequest;
 import com.g9_latam_team_61.backend.dto.LoteRequest;
 import com.g9_latam_team_61.backend.dto.NotaRequest;
+import com.g9_latam_team_61.backend.model.Cluster;
 import com.g9_latam_team_61.backend.model.Nota;
 import com.g9_latam_team_61.backend.repository.NotaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,11 +55,15 @@ class NotaIntegrationTest {
     @Autowired
     private NotaRepository notaRepository;
 
+    @Autowired
+    private com.g9_latam_team_61.backend.repository.ClusterRepository clusterRepository;
+
     @MockitoBean
     private MlClient mlClient;
 
     @BeforeEach
     void setUp() {
+        clusterRepository.deleteAll();
         notaRepository.deleteAll();
     }
 
@@ -167,6 +173,32 @@ class NotaIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.n_clusters").value(1))
                 .andExpect(jsonPath("$.n_documentos").value(2));
+    }
+
+    @Test
+    void debePreservarClustersYAsignacionesPrevias_siFastApiFallaAlAgrupar() throws Exception {
+        Cluster cPrevio = new Cluster();
+        cPrevio.setId(0);
+        cPrevio.setNombreSugerido("Cluster Previo");
+        cPrevio.setPalabrasClaveTop(List.of("k8s"));
+        cPrevio.setTotalDocumentos(2);
+        clusterRepository.save(cPrevio);
+
+        Nota n1 = new Nota(); n1.setContenidoOriginal("Texto 1"); n1.setCategoria("DevOps"); n1.setProbabilidad(0.9); n1.setClusterId(0);
+        Nota n2 = new Nota(); n2.setContenidoOriginal("Texto 2"); n2.setCategoria("DevOps"); n2.setProbabilidad(0.9); n2.setClusterId(0);
+        notaRepository.saveAll(List.of(n1, n2));
+
+        when(mlClient.ejecutarClustering(anyList(), any()))
+                .thenThrow(new MlServiceException("FastAPI de clustering no disponible"));
+
+        mockMvc.perform(post("/api/contenido/agrupar"))
+                .andExpect(status().isBadGateway());
+
+        // Verificar que el estado previo NO se perdió
+        assertEquals(1, clusterRepository.count());
+        List<Nota> notasPostFallo = notaRepository.findAll();
+        assertEquals(0, notasPostFallo.get(0).getClusterId());
+        assertEquals(0, notasPostFallo.get(1).getClusterId());
     }
 
     @Test

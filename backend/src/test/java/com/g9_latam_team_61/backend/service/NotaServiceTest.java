@@ -325,6 +325,36 @@ class NotaServiceTest {
     }
 
     @Test
+    void agruparContenido_noDebeModificarBaseDatos_siFastApiFalla() {
+        Nota n1 = new Nota(); n1.setId(1L); n1.setContenidoOriginal("Texto 1");
+        Nota n2 = new Nota(); n2.setId(2L); n2.setContenidoOriginal("Texto 2");
+        when(notaRepository.findAll()).thenReturn(List.of(n1, n2));
+
+        when(mlClient.ejecutarClustering(anyList(), any()))
+                .thenThrow(new MlServiceException("FastAPI caido"));
+
+        assertThrows(MlServiceException.class, () -> notaService.agruparContenido(2));
+
+        verify(clusterRepository, never()).deleteAll();
+        verify(clusterRepository, never()).save(any());
+    }
+
+    @Test
+    void agruparContenido_debeLanzarExcepcion_siRespuestaDeClusteringNoTieneClusters() {
+        Nota n1 = new Nota(); n1.setId(1L); n1.setContenidoOriginal("Texto 1");
+        Nota n2 = new Nota(); n2.setId(2L); n2.setContenidoOriginal("Texto 2");
+        when(notaRepository.findAll()).thenReturn(List.of(n1, n2));
+
+        when(mlClient.ejecutarClustering(anyList(), any()))
+                .thenReturn(new FastApiClusteringResponse("exec-1", 0, 2, List.of(), 10.0));
+
+        assertThrows(MlServiceException.class, () -> notaService.agruparContenido(2));
+
+        verify(clusterRepository, never()).deleteAll();
+        verify(clusterRepository, never()).save(any());
+    }
+
+    @Test
     void obtenerHistorial_debeFiltrarPorCategoria() {
         Pageable pageable = PageRequest.of(0, 10);
         Nota nota = new Nota();

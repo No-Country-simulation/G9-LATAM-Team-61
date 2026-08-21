@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -132,20 +133,29 @@ public class NotaService {
             throw new IllegalArgumentException("Se necesitan al menos 2 notas registradas para realizar el agrupamiento por K-Means");
         }
 
-        // 1. Limpiar asignaciones y clusters previos
+        // 1. Ejecutar clustering en FastAPI y validar el resultado ANTES de modificar la base de datos
+        FastApiClusteringResponse mlResponse = mlClient.ejecutarClustering(todasLasNotas, nClusters);
+        validarRespuestaClustering(mlResponse);
+
+        // 2. Aplicar los cambios en la base de datos de manera transaccional y atómica
+        return aplicarClustering(todasLasNotas, mlResponse);
+    }
+
+    @Transactional
+    public AgruparResponse aplicarClustering(List<Nota> todasLasNotas, FastApiClusteringResponse mlResponse) {
+        // Limpiar asignaciones en notas y clusters existentes
         todasLasNotas.forEach(nota -> nota.setClusterId(null));
         notaRepository.saveAll(todasLasNotas);
         clusterRepository.deleteAll();
-
-        // 2. Ejecutar clustering en FastAPI
-        FastApiClusteringResponse mlResponse = mlClient.ejecutarClustering(todasLasNotas, nClusters);
 
         List<ClusterResponse> clusterResponses = new ArrayList<>();
         if (mlResponse.clusters() != null) {
             for (FastApiClusterInfo info : mlResponse.clusters()) {
                 Cluster cluster = new Cluster();
                 cluster.setId(info.cluster_id());
-                cluster.setNombreSugerido(info.etiqueta_sugerida() != null ? info.etiqueta_sugerida() : "Cluster " + info.cluster_id());
+                cluster.setNombreSugerido(info.etiqueta_sugerida() != null && !info.etiqueta_sugerida().isBlank()
+                        ? info.etiqueta_sugerida()
+                        : "Cluster " + info.cluster_id());
                 cluster.setPalabrasClaveTop(info.palabras_clave() != null ? info.palabras_clave() : List.of());
                 cluster.setTotalDocumentos(info.tamano() != null ? info.tamano() : 0);
 
@@ -169,7 +179,7 @@ public class NotaService {
             }
         }
 
-        // 3. Guardar las notas vinculadas a su nuevo cluster_id
+        // Guardar las notas vinculadas a su nuevo cluster_id
         notaRepository.saveAll(todasLasNotas);
 
         return new AgruparResponse(
@@ -178,6 +188,17 @@ public class NotaService {
                 clusterResponses,
                 mlResponse.tiempo_procesamiento_ms()
         );
+    }
+
+    private void validarRespuestaClustering(FastApiClusteringResponse mlResponse) {
+        if (mlResponse == null || mlResponse.clusters() == null || mlResponse.clusters().isEmpty()) {
+            throw new MlServiceException("El servicio de clustering devolvió una respuesta nula o sin clusters");
+        }
+        for (FastApiClusterInfo info : mlResponse.clusters()) {
+            if (info == null || info.cluster_id() == null) {
+                throw new MlServiceException("El servicio de clustering devolvió información de cluster incompleta");
+            }
+        }
     }
 
     public NotaResponse registrarFeedback(Long id, FeedbackRequest request) {
