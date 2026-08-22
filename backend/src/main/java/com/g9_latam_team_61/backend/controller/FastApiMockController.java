@@ -3,6 +3,7 @@ package com.g9_latam_team_61.backend.controller;
 import com.g9_latam_team_61.backend.client.FastApiClusterInfo;
 import com.g9_latam_team_61.backend.client.FastApiClusteringRequest;
 import com.g9_latam_team_61.backend.client.FastApiClusteringResponse;
+import com.g9_latam_team_61.backend.client.FastApiDocumentoCluster;
 import com.g9_latam_team_61.backend.client.FastApiHealthResponse;
 import com.g9_latam_team_61.backend.client.FastApiRequest;
 import com.g9_latam_team_61.backend.client.FastApiResponse;
@@ -76,13 +77,20 @@ public class FastApiMockController {
     @PostMapping("/predict/clustering")
     public ResponseEntity<FastApiClusteringResponse> mockPredictClustering(@RequestBody(required = false) FastApiClusteringRequest request) {
         int totalDocs = (request != null && request.documentos() != null) ? request.documentos().size() : 0;
-        
+        List<String> docIds = (request != null && request.documentos() != null)
+                ? request.documentos().stream().map(FastApiDocumentoCluster::id).toList()
+                : List.of("1");
+        List<String> docTexts = (request != null && request.documentos() != null)
+                ? request.documentos().stream().map(FastApiDocumentoCluster::texto).limit(5).toList()
+                : List.of("doc1");
+
         FastApiClusterInfo c0 = new FastApiClusterInfo(
                 0,
                 totalDocs > 0 ? totalDocs : 1,
                 List.of("docker", "kubernetes", "oci"),
                 "Docker & Kubernetes",
-                List.of("doc1")
+                docTexts,
+                docIds
         );
 
         FastApiClusteringResponse response = new FastApiClusteringResponse(

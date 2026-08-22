@@ -178,6 +178,50 @@ class NotaIntegrationTest {
     }
 
     @Test
+    void debeAsignarClusterIdATodosLosDocumentos_cuandoElClusterTieneMasDeCincoElementos() throws Exception {
+        List<Nota> sieteNotas = new java.util.ArrayList<>();
+        for (int i = 1; i <= 7; i++) {
+            Nota n = new Nota();
+            n.setContenidoOriginal("Contenido de prueba documento numero " + i + " para clustering completo");
+            n.setCategoria("DevOps");
+            n.setProbabilidad(0.9);
+            sieteNotas.add(n);
+        }
+        List<Nota> notasGuardadas = notaRepository.saveAll(sieteNotas);
+        List<String> idsEsperados = notasGuardadas.stream().map(n -> String.valueOf(n.getId())).toList();
+
+        // FastAPI devuelve únicamente los primeros 5 documentos en texto (docs_cluster[:5]), pero la lista completa en documento_ids
+        List<String> previewCincoDocumentos = notasGuardadas.stream()
+                .limit(5)
+                .map(Nota::getContenidoOriginal)
+                .toList();
+
+        FastApiClusterInfo info = new FastApiClusterInfo(
+                0,
+                7,
+                List.of("devops", "docker"),
+                "DevOps Cluster",
+                previewCincoDocumentos,
+                idsEsperados
+        );
+        FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-100", 1, 7, List.of(info), 50.0);
+
+        when(mlClient.ejecutarClustering(anyList(), any())).thenReturn(mlResponse);
+
+        mockMvc.perform(post("/api/contenido/agrupar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.n_clusters").value(1))
+                .andExpect(jsonPath("$.n_documentos").value(7));
+
+        // Verificar que TODAS las 7 notas recibieron el cluster_id 0, no solo las 5 del preview
+        List<Nota> notasActualizadas = notaRepository.findAll();
+        assertEquals(7, notasActualizadas.size());
+        for (Nota nota : notasActualizadas) {
+            assertEquals(0, nota.getClusterId(), "La nota con ID " + nota.getId() + " debe tener asignado el cluster_id 0");
+        }
+    }
+
+    @Test
     void debePreservarClustersYAsignacionesPrevias_siFastApiFallaAlAgrupar() throws Exception {
         Cluster cPrevio = new Cluster();
         cPrevio.setId(0);

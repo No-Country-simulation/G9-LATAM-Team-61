@@ -53,4 +53,34 @@ class ClusterPersistenceServiceTest {
         verify(clusterRepository).save(any(Cluster.class));
         verify(notaRepository, times(2)).saveAll(anyList());
     }
+
+    @Test
+    void aplicarClustering_debeAsignarClusterATodosLosDocumentos_inclusoSiSonMasDeCinco() {
+        java.util.List<Nota> notas = new java.util.ArrayList<>();
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (long i = 1; i <= 8; i++) {
+            Nota n = new Nota();
+            n.setId(i);
+            n.setContenidoOriginal("Texto " + i);
+            notas.add(n);
+            ids.add(String.valueOf(i));
+        }
+
+        // Preview solo tiene 5 documentos
+        List<String> previewDocs = List.of("Texto 1", "Texto 2", "Texto 3", "Texto 4", "Texto 5");
+
+        FastApiClusterInfo info = new FastApiClusterInfo(0, 8, List.of("docker"), "Docker", previewDocs, ids);
+        FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-1", 1, 8, List.of(info), 45.0);
+
+        Cluster clusterGuardado = new Cluster(0, "Docker", List.of("docker"), 8, LocalDateTime.now());
+        when(clusterRepository.save(any(Cluster.class))).thenReturn(clusterGuardado);
+
+        AgruparResponse response = clusterPersistenceService.aplicarClustering(notas, mlResponse);
+
+        assertEquals(1, response.nClusters());
+        assertEquals(8, response.nDocumentos());
+        for (Nota nota : notas) {
+            assertEquals(0, nota.getClusterId(), "Todas las 8 notas deben recibir el cluster_id");
+        }
+    }
 }

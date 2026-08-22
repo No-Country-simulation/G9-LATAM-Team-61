@@ -43,7 +43,14 @@ public class ClusterPersistenceService {
 
                 Cluster clusterGuardado = clusterRepository.save(cluster);
 
-                if (info.documentos() != null) {
+                // Asignar cluster_id a las notas del cluster (prioriza documento_ids para membresía completa y no ambigua)
+                if (info.documento_ids() != null && !info.documento_ids().isEmpty()) {
+                    for (Nota nota : todasLasNotas) {
+                        if (nota.getId() != null && info.documento_ids().contains(String.valueOf(nota.getId()))) {
+                            nota.setClusterId(clusterGuardado.getId());
+                        }
+                    }
+                } else if (info.documentos() != null) {
                     for (Nota nota : todasLasNotas) {
                         if (info.documentos().contains(nota.getContenidoOriginal())) {
                             nota.setClusterId(clusterGuardado.getId());
