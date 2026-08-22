@@ -42,6 +42,7 @@ public class NotaService {
 
     private final NotaRepository notaRepository;
     private final ClusterRepository clusterRepository;
+    private final ClusterPersistenceService clusterPersistenceService;
     private final MlClient mlClient;
     private final NotaMapper notaMapper;
 
@@ -137,57 +138,8 @@ public class NotaService {
         FastApiClusteringResponse mlResponse = mlClient.ejecutarClustering(todasLasNotas, nClusters);
         validarRespuestaClustering(mlResponse);
 
-        // 2. Aplicar los cambios en la base de datos de manera transaccional y atómica
-        return aplicarClustering(todasLasNotas, mlResponse);
-    }
-
-    @Transactional
-    public AgruparResponse aplicarClustering(List<Nota> todasLasNotas, FastApiClusteringResponse mlResponse) {
-        // Limpiar asignaciones en notas y clusters existentes
-        todasLasNotas.forEach(nota -> nota.setClusterId(null));
-        notaRepository.saveAll(todasLasNotas);
-        clusterRepository.deleteAll();
-
-        List<ClusterResponse> clusterResponses = new ArrayList<>();
-        if (mlResponse.clusters() != null) {
-            for (FastApiClusterInfo info : mlResponse.clusters()) {
-                Cluster cluster = new Cluster();
-                cluster.setId(info.cluster_id());
-                cluster.setNombreSugerido(info.etiqueta_sugerida() != null && !info.etiqueta_sugerida().isBlank()
-                        ? info.etiqueta_sugerida()
-                        : "Cluster " + info.cluster_id());
-                cluster.setPalabrasClaveTop(info.palabras_clave() != null ? info.palabras_clave() : List.of());
-                cluster.setTotalDocumentos(info.tamano() != null ? info.tamano() : 0);
-
-                Cluster clusterGuardado = clusterRepository.save(cluster);
-
-                if (info.documentos() != null) {
-                    for (Nota nota : todasLasNotas) {
-                        if (info.documentos().contains(nota.getContenidoOriginal())) {
-                            nota.setClusterId(clusterGuardado.getId());
-                        }
-                    }
-                }
-
-                clusterResponses.add(new ClusterResponse(
-                        clusterGuardado.getId(),
-                        clusterGuardado.getNombreSugerido(),
-                        clusterGuardado.getPalabrasClaveTop(),
-                        clusterGuardado.getTotalDocumentos(),
-                        clusterGuardado.getFechaGeneracion()
-                ));
-            }
-        }
-
-        // Guardar las notas vinculadas a su nuevo cluster_id
-        notaRepository.saveAll(todasLasNotas);
-
-        return new AgruparResponse(
-                mlResponse.n_clusters() != null ? mlResponse.n_clusters() : clusterResponses.size(),
-                mlResponse.n_documentos() != null ? mlResponse.n_documentos() : todasLasNotas.size(),
-                clusterResponses,
-                mlResponse.tiempo_procesamiento_ms()
-        );
+        // 2. Aplicar los cambios en la base de datos de manera transaccional y atómica mediante ClusterPersistenceService
+        return clusterPersistenceService.aplicarClustering(todasLasNotas, mlResponse);
     }
 
     private void validarRespuestaClustering(FastApiClusteringResponse mlResponse) {

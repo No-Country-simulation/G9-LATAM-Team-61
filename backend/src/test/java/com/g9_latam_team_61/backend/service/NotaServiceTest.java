@@ -50,6 +50,9 @@ class NotaServiceTest {
     private ClusterRepository clusterRepository;
 
     @Mock
+    private ClusterPersistenceService clusterPersistenceService;
+
+    @Mock
     private MlClient mlClient;
 
     @Mock
@@ -128,19 +131,17 @@ class NotaServiceTest {
         FastApiClusterInfo info = new FastApiClusterInfo(0, 2, List.of("docker"), "Docker", List.of("Texto 1"));
         FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-1", 1, 2, List.of(info), 45.0);
 
-        Cluster cluster = new Cluster(0, "Docker", List.of("docker"), 2, LocalDateTime.now());
+        AgruparResponse expectedResponse = new AgruparResponse(1, 2, List.of(), 45.0);
 
         when(notaRepository.findAll()).thenReturn(List.of(n1, n2));
         when(mlClient.ejecutarClustering(anyList(), any())).thenReturn(mlResponse);
-        when(clusterRepository.save(any(Cluster.class))).thenReturn(cluster);
+        when(clusterPersistenceService.aplicarClustering(anyList(), any())).thenReturn(expectedResponse);
 
         AgruparResponse response = notaService.agruparContenido(null);
 
         assertEquals(1, response.nClusters());
         assertEquals(2, response.nDocumentos());
-        assertEquals(1, response.clusters().size());
-        assertEquals("Docker", response.clusters().get(0).nombreSugerido());
-        verify(clusterRepository).save(any(Cluster.class));
+        verify(clusterPersistenceService).aplicarClustering(anyList(), eq(mlResponse));
     }
 
     @Test
@@ -335,8 +336,7 @@ class NotaServiceTest {
 
         assertThrows(MlServiceException.class, () -> notaService.agruparContenido(2));
 
-        verify(clusterRepository, never()).deleteAll();
-        verify(clusterRepository, never()).save(any());
+        verify(clusterPersistenceService, never()).aplicarClustering(any(), any());
     }
 
     @Test
@@ -350,8 +350,7 @@ class NotaServiceTest {
 
         assertThrows(MlServiceException.class, () -> notaService.agruparContenido(2));
 
-        verify(clusterRepository, never()).deleteAll();
-        verify(clusterRepository, never()).save(any());
+        verify(clusterPersistenceService, never()).aplicarClustering(any(), any());
     }
 
     @Test

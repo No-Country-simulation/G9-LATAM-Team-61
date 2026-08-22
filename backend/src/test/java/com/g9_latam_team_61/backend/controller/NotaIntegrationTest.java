@@ -22,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -55,7 +57,7 @@ class NotaIntegrationTest {
     @Autowired
     private NotaRepository notaRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private com.g9_latam_team_61.backend.repository.ClusterRepository clusterRepository;
 
     @MockitoBean
@@ -199,6 +201,40 @@ class NotaIntegrationTest {
         List<Nota> notasPostFallo = notaRepository.findAll();
         assertEquals(0, notasPostFallo.get(0).getClusterId());
         assertEquals(0, notasPostFallo.get(1).getClusterId());
+    }
+
+    @Test
+    void debeHacerRollbackYPreservarEstadoPrevio_siOcurreFalloDuranteEscrituraDeClustering() throws Exception {
+        Cluster cPrevio = new Cluster();
+        cPrevio.setId(0);
+        cPrevio.setNombreSugerido("Cluster Previo Original");
+        cPrevio.setPalabrasClaveTop(List.of("docker"));
+        cPrevio.setTotalDocumentos(2);
+        clusterRepository.save(cPrevio);
+
+        Nota n1 = new Nota(); n1.setContenidoOriginal("Texto 1"); n1.setCategoria("DevOps"); n1.setProbabilidad(0.9); n1.setClusterId(0);
+        Nota n2 = new Nota(); n2.setContenidoOriginal("Texto 2"); n2.setCategoria("DevOps"); n2.setProbabilidad(0.9); n2.setClusterId(0);
+        notaRepository.saveAll(List.of(n1, n2));
+
+        FastApiClusterInfo info = new FastApiClusterInfo(1, 2, List.of("k8s"), "Nuevo Cluster", List.of("Texto 1"));
+        FastApiClusteringResponse mlResponse = new FastApiClusteringResponse("exec-1", 1, 2, List.of(info), 45.0);
+        when(mlClient.ejecutarClustering(anyList(), any())).thenReturn(mlResponse);
+
+        // Provocar fallo intencional durante la persistencia del nuevo cluster después del deleteAll()
+        doThrow(new RuntimeException("Fallo simulado de base de datos durante escritura de nuevo cluster"))
+                .when(clusterRepository).save(any(Cluster.class));
+
+        mockMvc.perform(post("/api/contenido/agrupar"))
+                .andExpect(status().isInternalServerError());
+
+        // Verificar que el rollback restauró el cluster previo y las asignaciones originales de las notas
+        assertEquals(1, clusterRepository.count());
+        Cluster clusterRecuperado = clusterRepository.findById(0).orElseThrow();
+        assertEquals("Cluster Previo Original", clusterRecuperado.getNombreSugerido());
+
+        List<Nota> notasPostRollback = notaRepository.findAll();
+        assertEquals(0, notasPostRollback.get(0).getClusterId());
+        assertEquals(0, notasPostRollback.get(1).getClusterId());
     }
 
     @Test
