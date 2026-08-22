@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from app.config import MIN_TEXT_LENGTH, MAX_TEXT_LENGTH, MAX_BATCH_SIZE
 
 class PredictionRequest(BaseModel):
@@ -29,12 +29,12 @@ class PredictionRequest(BaseModel):
             raise ValueError("El campo 'contenido_crudo' es obligatorio y no puede ser null.")
         
         if not isinstance(raw_val, str) or not raw_val.strip():
-            raise ValueError("El campo 'contenido_crudo' no puede estar vacío.")
+            raise ValueError("El campo 'contenido_crudo' no puede estar vacío ni contener solo espacios.")
         
         clean_text = raw_val.strip()
         if len(clean_text) < MIN_TEXT_LENGTH or len(clean_text) > MAX_TEXT_LENGTH:
             raise ValueError(
-                f"El texto debe tener entre {MIN_TEXT_LENGTH} y {MAX_TEXT_LENGTH} caracteres (actual: {len(clean_text)})."
+                f"El texto debe tener entre {MIN_TEXT_LENGTH} y {MAX_TEXT_LENGTH} caracteres (longitud actual: {len(clean_text)})."
             )
         
         self.contenido_crudo = clean_text
@@ -77,3 +77,18 @@ class BatchPredictionRequest(BaseModel):
             ]
         }
     )
+
+    @field_validator('textos')
+    @classmethod
+    def validate_individual_batch_elements(cls, textos: list[str]) -> list[str]:
+        cleaned_list = []
+        for idx, item in enumerate(textos):
+            if not isinstance(item, str) or not item.strip():
+                raise ValueError(f"El elemento en el índice {idx} no puede estar vacío ni contener solo espacios.")
+            clean_item = item.strip()
+            if len(clean_item) < MIN_TEXT_LENGTH or len(clean_item) > MAX_TEXT_LENGTH:
+                raise ValueError(
+                    f"El elemento en el índice {idx} debe tener entre {MIN_TEXT_LENGTH} y {MAX_TEXT_LENGTH} caracteres (longitud actual: {len(clean_item)})."
+                )
+            cleaned_list.append(clean_item)
+        return cleaned_list

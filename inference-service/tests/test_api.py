@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
+from app.model_loader import loader
 from app.config import MODEL_FILE
 
 
@@ -106,7 +107,16 @@ def test_boundary_length_5001_chars_rejected():
         assert response.status_code == 422
 
 
-# 5. Pruebas de Validación de Entrada (Campos ausentes, nulos, vacíos o tipos incorrectos)
+# 5. Pruebas de Validación de Entrada (Espacios, Campos ausentes, nulos o tipos incorrectos)
+def test_predict_spaces_only_rejected():
+    with TestClient(app) as client:
+        response = client.post(
+            "/predict",
+            json={"contenido_crudo": "                                    "}
+        )
+        assert response.status_code == 422
+
+
 def test_predict_empty_string():
     with TestClient(app) as client:
         response = client.post(
@@ -143,7 +153,21 @@ def test_predict_wrong_data_type():
         assert response.status_code == 422
 
 
-# 6. Prueba de JSON Malformado (HTTP 400)
+# 6. Prueba de Clasificación Válida que Retorna Categoría 'Otros'
+def test_predict_valid_classification_returning_otros():
+    with patch.object(loader.model, 'predict', return_value=["Otros"]):
+        with TestClient(app) as client:
+            response = client.post(
+                "/predict",
+                json={"contenido_crudo": "Receta tradicional de cocina mediterránea con aceite de oliva virgen."}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["categoria"] == "Otros"
+            assert "probabilidad" in data
+
+
+# 7. Prueba de JSON Malformado (HTTP 400)
 def test_predict_malformed_json():
     with TestClient(app) as client:
         response = client.post(
@@ -154,7 +178,7 @@ def test_predict_malformed_json():
         assert response.status_code == 400
 
 
-# 7. Prueba de Unsupported Media Type (HTTP 415)
+# 8. Prueba de Unsupported Media Type (HTTP 415)
 def test_predict_unsupported_media_type():
     with TestClient(app) as client:
         response = client.post(
@@ -165,7 +189,7 @@ def test_predict_unsupported_media_type():
         assert response.status_code == 415
 
 
-# 8. Compatibilidad Legacy (POST /analizar y alias text/descripcion)
+# 9. Compatibilidad Legacy (POST /analizar y alias text/descripcion)
 def test_legacy_analizar_endpoint_compatibility():
     with TestClient(app) as client:
         text = "Desarrollo de microservicios con Spring Boot, Spring Data JPA y PostgreSQL."
@@ -178,8 +202,8 @@ def test_legacy_analizar_endpoint_compatibility():
         assert "categoria" in data
 
 
-# 9. Procesamiento por Lotes (POST /predict/lote)
-def test_predict_batch():
+# 10. Procesamiento por Lotes y Validación por Elemento
+def test_predict_batch_success():
     with TestClient(app) as client:
         textos = [
             "Configuración de pipelines CI/CD con GitHub Actions y Docker.",
@@ -195,7 +219,33 @@ def test_predict_batch():
         assert len(data) == 2
 
 
-# 10. Clustering Temático K-Means (POST /predict/clustering)
+def test_predict_batch_element_too_short_rejected():
+    with TestClient(app) as client:
+        textos = [
+            "Texto válido con longitud superior a treinta caracteres requeridos.",
+            "Texto corto"  # < 30 caracteres
+        ]
+        response = client.post(
+            "/predict/lote",
+            json={"textos": textos}
+        )
+        assert response.status_code == 422
+
+
+def test_predict_batch_element_too_long_rejected():
+    with TestClient(app) as client:
+        textos = [
+            "Texto válido con longitud superior a treinta caracteres requeridos.",
+            "A" * 5001  # > 5000 caracteres
+        ]
+        response = client.post(
+            "/predict/lote",
+            json={"textos": textos}
+        )
+        assert response.status_code == 422
+
+
+# 11. Clustering Temático K-Means y Sanitización de Errores
 def test_clustering_kmeans():
     with TestClient(app) as client:
         payload = {
@@ -220,7 +270,26 @@ def test_clustering_kmeans():
         assert data["n_documentos"] == 4
 
 
-# 11. Prueba de Modelo No Disponible (HTTP 503)
+def test_clustering_error_sanitization():
+    with patch("app.clustering.router.clustering_service.clusterizar", side_effect=RuntimeError("Internal math error")):
+        with TestClient(app) as client:
+            payload = {
+                "documentos": [
+                    {"id": "1", "texto": "Documento de prueba uno con longitud adecuada para el clustering."},
+                    {"id": "2", "texto": "Documento de prueba dos con longitud adecuada para el clustering."}
+                ]
+            }
+            response = client.post(
+                "/predict/clustering",
+                json=payload
+            )
+            assert response.status_code == 500
+            data = response.json()
+            assert "Internal math error" not in data["detail"]
+            assert data["detail"] == "Error interno al procesar el agrupamiento temático."
+
+
+# 12. Prueba de Modelo No Disponible (HTTP 503)
 def test_model_unavailable_returns_503():
     with TestClient(app) as client:
         with patch("app.predictor.loader.model", None):

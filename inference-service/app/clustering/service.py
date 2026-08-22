@@ -1,23 +1,21 @@
 # app/clustering/service.py
 import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from collections import Counter
 import time
 import logging
 from typing import List, Dict, Any
 
 from app.clustering.preprocessor import ClusteringPreprocessor
-from app.clustering.schemas import ClusterInfo
 
 logger = logging.getLogger(__name__)
 
 class ClusteringService:
-    """Servicio principal de clustering"""
-    
-    def __init__(self):
-        self.preprocessor = ClusteringPreprocessor()
-        self.model = None
+    """
+    Servicio de clustering temático sin estado mutable (Stateless & Thread-Safe).
+    Cada ejecución instancia sus propios transformadores y estimadores locales para evitar
+    condiciones de carrera o colisiones en entornos concurrentes.
+    """
     
     def clusterizar(
         self,
@@ -26,32 +24,33 @@ class ClusteringService:
         algoritmo: str = "kmeans",
         idioma: str = "es"
     ) -> Dict[str, Any]:
-        """Realiza el clustering de documentos"""
+        """Realiza el clustering de documentos de forma stateless y segura"""
         
         start_time = time.time()
         
-        # 1. Preprocesar documentos
-        logger.info(f"Preprocesando {len(documentos)} documentos...")
-        vectores = self.preprocessor.preprocesar(documentos, idioma)
+        # 1. Instanciar preprocesador local por petición (Thread-Safe)
+        preprocessor = ClusteringPreprocessor()
+        logger.info(f"Preprocesando {len(documentos)} documentos para clustering...")
+        vectores = preprocessor.preprocesar(documentos, idioma)
         
-        # 2. Determinar número óptimo de clusters
+        # 2. Determinar número óptimo de clusters si no se especifica
         if n_clusters is None:
             n_clusters = self._encontrar_clusters_optimos(vectores)
-            logger.info(f"Clusters óptimos: {n_clusters}")
+            logger.info(f"Clusters óptimos calculados: {n_clusters}")
         
-        # 3. Aplicar K-Means
+        # 3. Aplicar K-Means con estimador local aislado
         logger.info(f"Aplicando K-Means con {n_clusters} clusters...")
-        self.model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        labels = self.model.fit_predict(vectores)
+        local_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        labels = local_model.fit_predict(vectores)
         
-        # 4. Generar información de clusters
+        # 4. Generar información detallada de clusters
         clusters_info = self._generar_info_clusters(
             documentos, 
             labels,
-            self.preprocessor.feature_names
+            preprocessor.feature_names
         )
         
-        # 5. Calcular métricas
+        # 5. Calcular métricas internas
         metricas = self._calcular_metricas(vectores, labels)
         
         tiempo = (time.time() - start_time) * 1000
@@ -74,16 +73,15 @@ class ClusteringService:
         
         inertias = []
         for k in range(2, max_clusters + 1):
-            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-            kmeans.fit(vectores)
-            inertias.append(kmeans.inertia_)
+            km = KMeans(n_clusters=k, random_state=42, n_init=10)
+            km.fit(vectores)
+            inertias.append(km.inertia_)
         
-        # Buscar el punto de inflexión
         if len(inertias) > 2:
             cambios = [inertias[i] - inertias[i+1] for i in range(len(inertias)-1)]
             return 2 + cambios.index(min(cambios))
         
-        return 3  # Valor por defecto
+        return 3
     
     def _generar_info_clusters(
         self,
@@ -93,48 +91,54 @@ class ClusteringService:
     ) -> List[Dict]:
         """Genera información detallada de cada cluster"""
         clusters_info = []
-        unique_labels = set(labels)
+        unique_labels = sorted(list(set(labels)))
         
         for cluster_id in unique_labels:
-            # Documentos en este cluster
             mask = labels == cluster_id
-            docs_cluster = [documentos[i] for i in range(len(documentos)) if mask[i]]
+            docs_cluster = [doc for doc, m in zip(documentos, mask) if m]
             
-            # Extraer palabras clave
-            palabras_clave = self._extraer_keywords(docs_cluster)
+            # Palabras más representativas
+            palabras_cluster = []
+            for doc in docs_cluster:
+                palabras = [p for p in doc.lower().split() if p in feature_names]
+                palabras_cluster.extend(palabras)
             
-            # Generar etiqueta sugerida
-            etiqueta = ' '.join(palabras_clave[:3]).title()
+            top_palabras = [p for p, _ in Counter(palabras_cluster).most_common(5)]
+            if not top_palabras and feature_names:
+                top_palabras = feature_names[:3]
+            
+            etiqueta = self._generar_etiqueta(top_palabras)
             
             clusters_info.append({
                 'cluster_id': int(cluster_id),
                 'tamano': len(docs_cluster),
-                'palabras_clave': palabras_clave[:10],
-                'etiqueta_sugerida': etiqueta if etiqueta else "Cluster sin nombre",
-                'documentos': docs_cluster[:5]  # Solo top 5
+                'palabras_clave': top_palabras,
+                'etiqueta_sugerida': etiqueta,
+                'documentos': docs_cluster[:5]
             })
         
         return clusters_info
     
-    def _extraer_keywords(self, documentos: List[str]) -> List[str]:
-        """Extrae palabras clave de un cluster usando el módulo optimizado de keywords"""
-        from app.keywords import extract_keywords
-        texto_unido = ' '.join(documentos)
-        return extract_keywords(texto_unido, top_n=10)
+    def _generar_etiqueta(self, palabras_clave: List[str]) -> str:
+        """Genera una etiqueta legible para el cluster"""
+        if not palabras_clave:
+            return "Tema General"
+        return " / ".join([p.capitalize() for p in palabras_clave[:3]])
     
-    def _calcular_metricas(self, vectores: np.ndarray, labels: np.ndarray) -> Dict:
-        """Calcula métricas de calidad"""
-        metricas = {}
+    def _calcular_metricas(self, vectores: np.ndarray, labels: np.ndarray) -> Dict[str, float]:
+        """Calcula métricas de calidad de clustering de forma segura"""
+        metricas = {
+            'inercia': 0.0,
+            'silhouette_score': 0.0
+        }
         
-        if len(set(labels)) > 1:
+        if len(set(labels)) > 1 and len(vectores) > len(set(labels)):
             try:
-                metricas['silhouette_score'] = round(
-                    silhouette_score(vectores, labels), 3
-                )
-            except:
+                from sklearn.metrics import silhouette_score
+                metricas['silhouette_score'] = round(float(silhouette_score(vectores, labels)), 3)
+            except Exception:
                 metricas['silhouette_score'] = 0.0
-        
+                
         return metricas
 
-# Instancia global para usar en toda la app
 clustering_service = ClusteringService()

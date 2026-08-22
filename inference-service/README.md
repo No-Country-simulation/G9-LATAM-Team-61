@@ -9,7 +9,7 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 
 ---
 
-## 🏛️ Arquitectura y Contrato de la API
+## Arquitectura y Contrato de la API
 
 ### 1. Clasificación Individual Canónica
 
@@ -35,14 +35,16 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 }
 ```
 
-> **Nota de compatibilidad legacy:** El endpoint `POST /analizar` y los campos `text`/`descripcion` se mantienen exclusivamente marcados como `deprecated` para compatibilidad retroactiva temporal.
+> **Política de Compatibilidad y Criterio de Retiro Legacy:**
+> El endpoint `POST /analizar` y los campos de entrada `text` y `descripcion` se mantienen temporalmente marcados como `deprecated=True` exclusivamente para permitir la transición sin fricción de clientes antiguos. Quedarán programados para su retiro definitivo en la versión `v2.0` del microservicio una vez que todos los consumidores migren al contrato canónico `POST /predict` con `contenido_crudo`.
 
 ---
 
 ### 2. Procesamiento por Lotes (Batch)
 
 * **Ruta:** `POST /predict/lote`
-* **Payload:** `{ "textos": ["texto 1 con más de 30 caracteres...", "texto 2..."] }` (máximo 100 elementos por lote).
+* **Payload:** `{ "textos": ["texto 1 con más de 30 caracteres...", "texto 2..."] }`
+* **Restricciones:** Máximo 100 elementos por lote. Cada texto individual debe cumplir estrictamente con una longitud de entre **30 y 5,000** caracteres.
 
 ---
 
@@ -50,6 +52,7 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 
 * **Ruta:** `POST /predict/clustering`
 * **Payload:** `{ "documentos": [{"id": "1", "texto": "..."}], "n_clusters": 2, "algoritmo": "kmeans", "idioma": "es" }`
+* **Restricciones:** Entre 2 y 200 documentos por solicitud. Ejecución 100% *stateless* y segura para concurrencia.
 
 ---
 
@@ -60,25 +63,25 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 
 ---
 
-## 🚦 Códigos de Estado y Manejo de Errores
+## Códigos de Estado y Manejo de Errores
 
 | Código HTTP | Causa / Significado |
 | :--- | :--- |
 | **`200 OK`** | Inferencia procesada exitosamente. *(La categoría `Otros` solo se retorna ante inferencias válidas del modelo).* |
-| **`400 Bad Request`** | Cuerpo JSON malformado o sintaxis JSON inválida. |
+| **`400 Bad Request`** | Cuerpo JSON malformado, sintaxis JSON inválida o parámetros de clustering incorrectos. |
 | **`415 Unsupported Media Type`** | `Content-Type` distinto de `application/json` en peticiones POST. |
-| **`422 Unprocessable Entity`** | Validación fallida: campo `contenido_crudo` ausente, nulo, tipo incorrecto o longitud fuera del rango (30–5000 chars). |
-| **`500 Internal Server Error`** | Error interno no controlado (sin exposición de stack traces ni variables internas). |
+| **`422 Unprocessable Entity`** | Validación fallida: campo `contenido_crudo` ausente, nulo, compuesto solo por espacios, tipo incorrecto o longitud fuera del rango (30–5000 chars) tanto en peticiones individuales como en cada elemento de lote. |
+| **`500 Internal Server Error`** | Error interno no controlado (sanitizado, sin exposición de stack traces ni variables internas). |
 | **`503 Service Unavailable`** | Modelo de Machine Learning no cargado o no disponible. |
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 inference-service/
 ├── app/
-│   ├── clustering/         # Módulo de clustering no supervisado (K-Means + TF-IDF)
+│   ├── clustering/         # Módulo de clustering no supervisado (K-Means stateless + TF-IDF)
 │   ├── routers/            # Routers modulares (health, prediction)
 │   ├── config.py           # Configuración centralizada y lectura de variables de entorno
 │   ├── keywords.py         # Extracción y filtrado exhaustivo de palabras clave
@@ -86,10 +89,10 @@ inference-service/
 │   ├── model_loader.py     # Singleton para carga segura del modelo en memoria
 │   ├── normalizer.py       # Transformador Scikit-Learn NormalizadorSpanglish
 │   ├── predictor.py        # Orquestador del pipeline de inferencia
-│   ├── schemas.py          # Esquemas Pydantic v2 (Requests & Responses)
+│   ├── schemas.py          # Esquemas Pydantic v2 con validación por elemento (Requests & Responses)
 │   └── translator.py       # Servicio de traducción con caché LRU acotada (disabled by default)
 ├── model/
-│   └── modelo_hacka.pkl    # Pipeline Scikit-Learn canónico entrenado
+│   └── modelo_hacka.pkl    # Pipeline Scikit-Learn canónico entrenado (ubicación única)
 ├── tests/
 │   └── test_api.py         # Suite completa de pruebas automatizadas (pytest)
 ├── .env.example            # Plantilla de variables de entorno
@@ -101,7 +104,7 @@ inference-service/
 
 ---
 
-## 🧪 Pruebas Automatizadas
+## Pruebas Automatizadas
 
 Para ejecutar la suite completa de pruebas:
 
@@ -111,7 +114,7 @@ pytest -v
 
 ---
 
-## 🐳 Ejecución con Docker
+## Ejecución con Docker
 
 Construir y levantar el contenedor:
 
