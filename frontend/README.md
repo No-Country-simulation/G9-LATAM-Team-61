@@ -55,9 +55,9 @@ Front Hackathon/
 
 ## Roadmap de Estado del Sistema (Integración Real vs Componentes Demo)
 
-- [x] **Integración HTTP en Vivo (Spring Boot)**: Módulo de Clasificación (`POST /api/contenido`) con validación de contrato DTO (`titulo`, `descripcion`), sanitización y manejo transparente de errores HTTP.
+- [x] **Integración HTTP en Vivo (Spring Boot)**: Módulo de Clasificación (`POST /api/contenido`) con validación de contrato DTO (`descripcion`: 30 a 5,000 caracteres), sanitización y manejo transparente de errores HTTP.
 - [x] **Fases 1 a 2 UI**: Layout Shell, Tokens CSS de diseño visual, Módulo de Ingreso de Datos e Inferencia.
-- [x] **Fases 3 a 5 UI (Modo Demo / Próximamente)**: Componentes visuales preparados para futuros desarrollos del backend:
-  - Búsqueda y Analítica *(Filtro textual local / Métricas Demo)*
-  - Historial y Paginación *(Visualización de registros locales)*
-  - Clusters K-Means y Carga Masiva CSV *(Simulación demostrativa)*
+- [x] **Fases 3 a 5 UI**: Componentes visuales y reactivos para:
+  - Búsqueda y Analítica *(Filtro textual en tiempo real y métricas)*
+  - Historial y Paginación *(Persistencia real en PostgreSQL / Spring Boot)*
+  - Clusters K-Means y Carga Masiva CSV / JSON *(Procesamiento por lotes)*
