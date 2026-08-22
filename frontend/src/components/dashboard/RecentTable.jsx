@@ -5,7 +5,14 @@ import Card from '../common/Card';
 /**
  * Recent Processed Documents Table Component (Últimos Procesados - Phase 4)
  */
-export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetail, onViewRecommendations }) {
+export function RecentTable({
+  documents = [],
+  historyError = null,
+  searchQuery = '',
+  onOpenHistory,
+  onViewDetail,
+  onViewRecommendations,
+}) {
   const filteredDocs = (documents || []).filter((doc) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -55,7 +62,21 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetai
             </tr>
           </thead>
           <tbody id="recent-tbody">
-            {recentDocs.length > 0 ? (
+            {historyError ? (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--accent-red)', padding: '2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <svg className="icon" viewBox="0 0 24 24" style={{ color: 'var(--accent-red)' }}>
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span style={{ fontWeight: 600 }}>Error al consultar el historial:</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{historyError}</span>
+                  </div>
+                </td>
+              </tr>
+            ) : recentDocs.length > 0 ? (
               recentDocs.map((doc) => (
                 <tr key={doc.id} className="fade-in" style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td
@@ -130,7 +151,9 @@ export function RecentTable({ documents, searchQuery, onOpenHistory, onViewDetai
             ) : (
               <tr>
                 <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-                  No se encontraron documentos coincidentes
+                  {searchQuery
+                    ? `No se encontraron notas con el término "${searchQuery}".`
+                    : 'No hay documentos registrados aún en la base de datos.'}
                 </td>
               </tr>
             )}

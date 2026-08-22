@@ -47,6 +47,7 @@ export function App() {
     isProcessingBatch,
     isSendingFeedback,
     isApiLive,
+    historyError,
     reloadDashboardData,
     handleClassify,
     handlePerformSearch,
@@ -98,6 +99,7 @@ export function App() {
         <section id="sec-resultados" className="bottom-grid">
           <RecentTable
             documents={documents}
+            historyError={historyError}
             searchQuery={searchQuery}
             onOpenHistory={() => setActiveModal('history')}
             onViewDetail={openResultModal}
@@ -109,7 +111,6 @@ export function App() {
             isReclustering={isReclustering}
             onRecluster={handleRecluster}
             onOpenClusters={() => setActiveModal('clusters')}
-            isApiLive={isApiLive}
           />
         </section>
       </main>
@@ -127,6 +128,7 @@ export function App() {
         isOpen={activeModal === 'history'}
         onClose={closeModal}
         documents={documents}
+        historyError={historyError}
         onViewDetail={openResultModal}
         onViewRecommendations={openRecommendationsModal}
       />

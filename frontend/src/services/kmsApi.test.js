@@ -150,7 +150,28 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     expect(history.items[0].category).toBe('DevOps');
   });
 
-  it('5. Debe manejar y lanzar error explícito ante una respuesta HTTP 400 de error de validación', async () => {
+  it('5. fetchHistory debe manejar correctamente una respuesta válida vacía ([]) sin errores', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+
+    const history = await fetchHistory('', 0, 20, 'http://localhost:8080/api');
+    expect(history.items).toEqual([]);
+    expect(history.totalElements).toBe(0);
+    expect(history.totalPages).toBe(1);
+  });
+
+  it('6. fetchHistory debe propagar el error ante fallo de red o HTTP sin enmascararlo como lista vacía', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network timeout failure'));
+
+    await expect(fetchHistory('', 0, 20, 'http://localhost:8080/api'))
+      .rejects
+      .toThrow();
+  });
+
+  it('7. Debe manejar y lanzar error explícito ante una respuesta HTTP 400 de error de validación', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
@@ -161,7 +182,7 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
       .toThrow('HTTP 400: Error de validación según el servidor backend.');
   });
 
-  it('6. Debe lanzar error 5xx / fallo de red SIN realizar fallback silencioso en Modo Real', async () => {
+  it('8. Debe lanzar error 5xx / fallo de red SIN realizar fallback silencioso en Modo Real', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network Error'));
 
     await expect(classifyContent({ content: 'Texto de prueba de fallo de conexión de red mayor a 30 caracteres.' }, 'http://localhost:8080/api', false))
@@ -169,20 +190,20 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
       .toThrow('Error de conexión: No se pudo establecer comunicación con el servidor de Spring Boot (http://localhost:8080).');
   });
 
-  it('7. Debe ejecutar el modo demostrativo local cuando se habilita explícitamente (forceDemoMode=true)', async () => {
+  it('9. Debe ejecutar el modo demostrativo local cuando se habilita explícitamente (forceDemoMode=true)', async () => {
     const result = await classifyContent({ content: 'Código React hooks useState useEffect para el frontend de la aplicación web.' }, 'http://localhost:8080/api', true);
 
     expect(result.category).toBe('Frontend');
     expect(result.isLiveApi).toBe(false);
   });
 
-  it('8. Debe retornar false en checkBackendHealth si el servidor no responde', async () => {
+  it('10. Debe retornar false en checkBackendHealth si el servidor no responde', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network offline'));
     const isAlive = await checkBackendHealth('http://localhost:8080/api');
     expect(isAlive).toBe(false);
   });
 
-  it('9. searchContent debe invocar GET /api/buscar?q=... y mapear los resultados', async () => {
+  it('11. searchContent debe invocar GET /api/buscar?q=... y mapear los resultados', async () => {
     const mockSearchResults = [
       {
         id: 7,
@@ -211,7 +232,7 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     expect(results[0].tags).toBe('docker, kubernetes');
   });
 
-  it('10. triggerReclustering debe invocar POST /api/contenido/agrupar y estructurar clusters', async () => {
+  it('12. triggerReclustering debe invocar POST /api/contenido/agrupar y estructurar clusters', async () => {
     const mockAgruparResponse = {
       n_clusters: 2,
       n_documentos: 10,
@@ -239,7 +260,7 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     expect(result.clusters[0].docsCount).toBe(6);
   });
 
-  it('11. sendFeedback debe invocar POST /api/contenido/{id}/feedback', async () => {
+  it('13. sendFeedback debe invocar POST /api/contenido/{id}/feedback', async () => {
     const mockFeedbackResponse = {
       id: 5,
       categoria: 'Backend',
@@ -263,7 +284,7 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     expect(result.categoria).toBe('Backend');
   });
 
-  it('12. fetchRecommendations debe invocar GET /api/contenido/{id}/recomendados', async () => {
+  it('14. fetchRecommendations debe invocar GET /api/contenido/{id}/recomendados', async () => {
     const mockRecs = [
       {
         id: 2,

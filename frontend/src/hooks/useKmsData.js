@@ -43,7 +43,7 @@ export function useKmsData(showToast) {
     // 2. Fetch history directly (independent of /api/health existence)
     try {
       const historyData = await fetchHistory(cat);
-      if (historyData && historyData.items && historyData.items.length > 0) {
+      if (historyData && Array.isArray(historyData.items)) {
         setDocuments(historyData.items);
         setHistoryError(null);
         setIsApiLive(true);
@@ -136,7 +136,7 @@ export function useKmsData(showToast) {
             showToast(`No se encontraron notas con el término "${cleanQ}".`, 'info');
           }
         }
-      } catch (_err) {
+      } catch {
         const localMatches = (documents || INITIAL_DOCUMENTS).filter(
           (d) =>
             (d.content && d.content.toLowerCase().includes(cleanQ.toLowerCase())) ||
@@ -179,7 +179,7 @@ export function useKmsData(showToast) {
 
         showToast('Agrupamiento K-Means ejecutado correctamente', 'success');
         if (typeof openClustersModal === 'function') openClustersModal();
-      } catch (_err) {
+      } catch {
         setIsReclustering(false);
         const fallback = getMockClusters();
         setClusters(fallback.clusters);

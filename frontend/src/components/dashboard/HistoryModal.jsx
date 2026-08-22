@@ -4,7 +4,14 @@ import Badge from '../common/Badge';
 /**
  * Full History Modal Component with Client-side Pagination (Phase 4)
  */
-export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewRecommendations }) {
+export function HistoryModal({
+  isOpen,
+  onClose,
+  documents = [],
+  historyError = null,
+  onViewDetail,
+  onViewRecommendations,
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const itemsPerPage = 8;
@@ -102,12 +109,26 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem' }}>EXTRACTO / CONTENIDO</th>
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '130px' }}>CATEGORÍA</th>
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '90px' }}>FECHA</th>
-                <th style={{ textAlign: 'left', padding: '0.8rem 1rem' }}>TAGS (TF-IDF)</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '160px' }}>TAGS (TF-IDF)</th>
                 <th style={{ textAlign: 'right', padding: '0.8rem 1.2rem', width: '160px' }}>ACCIÓN</th>
               </tr>
             </thead>
             <tbody id="modal-history-tbody">
-              {currentDocs.length > 0 ? (
+              {historyError ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--accent-red)', padding: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <svg className="icon" viewBox="0 0 24 24" style={{ color: 'var(--accent-red)' }}>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      <span style={{ fontWeight: 600 }}>Error al cargar el historial:</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{historyError}</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : currentDocs.length > 0 ? (
                 currentDocs.map((doc) => (
                   <tr key={doc.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td
@@ -201,7 +222,7 @@ export function HistoryModal({ isOpen, onClose, documents, onViewDetail, onViewR
                     colSpan="5"
                     style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}
                   >
-                    No hay documentos en esta categoría.
+                    No hay documentos registrados aún en esta categoría.
                   </td>
                 </tr>
               )}
