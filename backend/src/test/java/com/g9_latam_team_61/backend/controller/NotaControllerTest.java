@@ -206,6 +206,38 @@ class NotaControllerTest {
     }
 
     @Test
+    void analizarLote_debeRetornar201_conLimiteInferiorExacto30CaracteresEnJsonBatch() throws Exception {
+        String texto30 = "123456789012345678901234567890";
+        LoteRequest request = new LoteRequest(List.of(texto30));
+        NotaResponse n1 = new NotaResponse(1L, texto30, "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        LoteResponse response = new LoteResponse(1, 3.2, 3.2, List.of(n1));
+
+        when(notaService.procesarLote(isNull(), any(LoteRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.archivos_procesados").value(1));
+    }
+
+    @Test
+    void analizarLote_debeRetornar201_conLimiteSuperiorExacto5000CaracteresEnJsonBatch() throws Exception {
+        String texto5000 = "a".repeat(5000);
+        LoteRequest request = new LoteRequest(List.of(texto5000));
+        NotaResponse n1 = new NotaResponse(1L, texto5000, "DevOps", 0.94, List.of("docker"), LocalDateTime.now(), 3.2);
+        LoteResponse response = new LoteResponse(1, 3.2, 3.2, List.of(n1));
+
+        when(notaService.procesarLote(isNull(), any(LoteRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/contenido/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.archivos_procesados").value(1));
+    }
+
+    @Test
     void analizar_debeRetornar201_conLimiteInferiorExacto30Caracteres() throws Exception {
         String texto30 = "123456789012345678901234567890"; // 30 chars
         NotaRequest request = new NotaRequest(texto30);

@@ -137,6 +137,42 @@ class FastApiMockControllerTest {
     }
 
     @Test
+    void mockPredictLote_debeRetornar200_con30Caracteres() throws Exception {
+        String texto30 = "123456789012345678901234567890";
+        Map<String, List<String>> payload = Map.of("textos", List.of(texto30));
+
+        mockMvc.perform(post("/predict/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void mockPredictLote_debeRetornar200_con5000Caracteres() throws Exception {
+        String texto5000 = "a".repeat(5000);
+        Map<String, List<String>> payload = Map.of("textos", List.of(texto5000));
+
+        mockMvc.perform(post("/predict/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void mockPredictLote_debeRetornar422_cuandoElementoTiene5001Caracteres() throws Exception {
+        String texto5001 = "a".repeat(5001);
+        Map<String, List<String>> payload = Map.of("textos", List.of(texto5001));
+
+        mockMvc.perform(post("/predict/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(payload)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
     void mockPredictClustering_debeRetornarClusters() throws Exception {
         FastApiClusteringRequest request = new FastApiClusteringRequest(
                 List.of(new FastApiDocumentoCluster("1", "Doc 1"), new FastApiDocumentoCluster("2", "Doc 2")),

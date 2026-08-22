@@ -26,6 +26,25 @@ class MlClientTest {
     }
 
     @Test
+    void analizar_debeEnviarPostPredictConClaveContenidoCrudoYRetornarResultado() {
+        String contenido = "Configuracion de balanceadores en OCI usando Docker";
+        mockServer.expect(requestTo("http://localhost:8000/predict"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.contenido_crudo").value(contenido))
+                .andRespond(withSuccess("{\"categoria\":\"DevOps\",\"probabilidad\":0.94,\"palabras_clave\":[\"OCI\",\"Docker\"],\"tiempo_procesamiento_ms\":32.5}", MediaType.APPLICATION_JSON));
+
+        MlResult result = mlClient.analizar(contenido);
+
+        assertNotNull(result);
+        assertEquals("DevOps", result.categoria());
+        assertEquals(0.94, result.probabilidad());
+        assertEquals(List.of("OCI", "Docker"), result.palabrasClave());
+        assertEquals(32.5, result.tiempoProcesamientoMs());
+        mockServer.verify();
+    }
+
+    @Test
     void analizarLote_debeRetornarListaValida_cuandoFastApiRespondeCorrectamente() {
         mockServer.expect(requestTo("http://localhost:8000/predict/lote"))
                 .andExpect(method(HttpMethod.POST))
