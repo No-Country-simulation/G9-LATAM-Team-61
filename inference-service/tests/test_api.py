@@ -245,11 +245,7 @@ def test_predict_batch_element_too_long_rejected():
         assert response.status_code == 422
 
 
-<<<<<<< HEAD
 # 11. Clustering Temático K-Means y Validación de documento_ids
-=======
-# 11. Clustering Temático K-Means y Sanitización de Errores
->>>>>>> origin/main
 def test_clustering_kmeans():
     with TestClient(app) as client:
         payload = {
@@ -272,7 +268,6 @@ def test_clustering_kmeans():
         assert "clusters" in data
         assert "n_documentos" in data
         assert data["n_documentos"] == 4
-<<<<<<< HEAD
         
         for cluster in data["clusters"]:
             assert "documento_ids" in cluster
@@ -371,8 +366,6 @@ def test_clustering_deterministic_cluster_with_more_than_5_members():
         # 3. Textos idénticos con IDs distintos permanecen diferenciados
         dev_ids_esperados = {f"dev-{i}" for i in range(1, 8)}
         assert set(devops_cluster["documento_ids"]) == dev_ids_esperados
-=======
->>>>>>> origin/main
 
 
 def test_clustering_error_sanitization():
