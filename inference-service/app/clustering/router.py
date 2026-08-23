@@ -15,15 +15,14 @@ router = APIRouter(tags=["Clustering"])
 )
 def predict_clustering(request: ClusteringRequest):
     try:
-        valid_docs = [doc for doc in request.documentos if doc.texto and doc.texto.strip()]
-        if len(valid_docs) < 2:
+        if len(request.documentos) < 2:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Se necesitan al menos 2 documentos válidos para realizar clustering."
             )
         
-        textos = [doc.texto for doc in valid_docs]
-        doc_ids = [str(doc.id) if doc.id is not None else str(idx) for idx, doc in enumerate(valid_docs)]
+        textos = [doc.texto for doc in request.documentos]
+        doc_ids = [doc.id for doc in request.documentos]
         
         resultado = clustering_service.clusterizar(
             documentos=textos,

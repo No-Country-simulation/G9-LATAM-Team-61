@@ -5,27 +5,30 @@ from datetime import datetime
 from app.config import MAX_CLUSTERING_DOCS
 
 class DocumentoCluster(BaseModel):
-    """Un documento para clusterizar"""
-    id: Optional[str | int] = Field(None, description="ID único del documento")
+    """Un documento para clusterizar con ID obligatorio e inequívoco"""
+    id: str = Field(..., description="ID único y obligatorio del documento")
     texto: str = Field(..., min_length=3, max_length=5000)
     metadata: Optional[Dict[str, Any]] = None
     
+    @field_validator('id', mode='before')
+    @classmethod
+    def validar_id(cls, v: Any) -> str:
+        if v is None:
+            raise ValueError('El campo id es obligatorio y no puede ser nulo.')
+        str_val = str(v).strip()
+        if not str_val:
+            raise ValueError('El campo id no puede estar vacío o contener solo espacios.')
+        return str_val
+
     @field_validator('texto')
     @classmethod
     def validar_texto(cls, v: str) -> str:
         if len(v.strip()) < 3:
-            raise ValueError('El texto debe tener al menos 3 caracteres')
+            raise ValueError('El texto debe tener al menos 3 caracteres.')
         return v.strip()
 
-    @field_validator('id', mode='before')
-    @classmethod
-    def validar_id(cls, v: Any) -> Optional[str]:
-        if v is not None:
-            return str(v)
-        return None
-
 class ClusteringRequest(BaseModel):
-    """Solicitud de clustering"""
+    """Solicitud de clustering con validación de unicidad de IDs"""
     documentos: List[DocumentoCluster] = Field(
         ..., 
         min_length=2,
@@ -46,6 +49,20 @@ class ClusteringRequest(BaseModel):
         "es",
         description="Idioma: es (español) o en (inglés)"
     )
+
+    @field_validator('documentos')
+    @classmethod
+    def validar_unicidad_ids(cls, docs: List[DocumentoCluster]) -> List[DocumentoCluster]:
+        ids = [doc.id for doc in docs]
+        if len(ids) != len(set(ids)):
+            seen = set()
+            dups = set()
+            for doc_id in ids:
+                if doc_id in seen:
+                    dups.add(doc_id)
+                seen.add(doc_id)
+            raise ValueError(f"Los IDs de los documentos deben ser únicos en la solicitud. IDs duplicados detectados: {sorted(list(dups))}")
+        return docs
 
 class ClusterInfo(BaseModel):
     """Información de un cluster"""

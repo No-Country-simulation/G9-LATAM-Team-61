@@ -275,24 +275,68 @@ def test_clustering_kmeans():
             assert len(cluster["documento_ids"]) == cluster["tamano"]
 
 
-def test_clustering_documento_ids_membership_with_duplicate_texts():
+def test_clustering_duplicate_ids_rejected():
+    """Valida que IDs duplicados en la solicitud de clustering sean rechazados con 422."""
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                {"id": "doc-duplicado", "texto": "Configuración de contenedores Docker en servidor Linux."},
+                {"id": "doc-duplicado", "texto": "Despliegue de aplicaciones React con TypeScript."}
+            ]
+        }
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 422
+
+
+def test_clustering_null_or_empty_id_rejected():
+    """Valida que IDs nulos o vacíos sean rechazados con 422."""
+    with TestClient(app) as client:
+        # Caso ID nulo
+        response_null = client.post(
+            "/predict/clustering",
+            json={
+                "documentos": [
+                    {"id": None, "texto": "Configuración de contenedores Docker en servidor Linux."},
+                    {"id": "doc-2", "texto": "Despliegue de aplicaciones React con TypeScript."}
+                ]
+            }
+        )
+        assert response_null.status_code == 422
+
+        # Caso ID con espacios en blanco
+        response_empty = client.post(
+            "/predict/clustering",
+            json={
+                "documentos": [
+                    {"id": "   ", "texto": "Configuración de contenedores Docker en servidor Linux."},
+                    {"id": "doc-2", "texto": "Despliegue de aplicaciones React con TypeScript."}
+                ]
+            }
+        )
+        assert response_empty.status_code == 422
+
+
+def test_clustering_deterministic_cluster_with_more_than_5_members():
     """
-    Prueba de membresía por IDs: Más de 5 documentos incluyendo textos repetidos
-    para verificar que cada documento mantiene su ID único asignado a su respectivo cluster.
+    Prueba determinista con un cluster de tamano > 5 (7 documentos de DevOps con textos idénticos e IDs únicos) y 2 de Frontend:
+    Verifica que:
+    1. documentos contiene exactamente la muestra máxima de 5.
+    2. documento_ids contiene todos los miembros (7).
+    3. Los textos idénticos con IDs distintos permanecen completamente diferenciados y preservados.
     """
     with TestClient(app) as client:
         payload = {
             "documentos": [
-                # 4 Documentos sobre DevOps (2 de ellos con texto exactamente repetido)
-                {"id": "doc-devops-1", "texto": "Despliegue y orquestación con Docker y Kubernetes en infraestructura Cloud."},
-                {"id": "doc-devops-2", "texto": "Despliegue y orquestación con Docker y Kubernetes en infraestructura Cloud."}, # Repetido
-                {"id": "doc-devops-3", "texto": "Configuración de balanceadores Nginx en contenedores Docker y proxy inverso."},
-                {"id": "doc-devops-4", "texto": "Infraestructura como código con Terraform para Docker y Kubernetes."},
-                # 4 Documentos sobre Frontend (2 de ellos con texto exactamente repetido)
-                {"id": "doc-front-1", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState useEffect."},
-                {"id": "doc-front-2", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState useEffect."}, # Repetido
-                {"id": "doc-front-3", "texto": "Diseño de componentes web modernos con CSS Grid y TailwindCSS responsivo."},
-                {"id": "doc-front-4", "texto": "Optimización del renderizado en React con useMemo y useCallback reactivo."}
+                # 7 Documentos de DevOps con texto idéntico y IDs únicos
+                {"id": f"dev-{i}", "texto": "Orquestación de microservicios con Docker y Kubernetes en clusters cloud."}
+                for i in range(1, 8)
+            ] + [
+                # 2 Documentos de Frontend con texto idéntico y IDs únicos
+                {"id": "front-1", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState."},
+                {"id": "front-2", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState."}
             ],
             "n_clusters": 2,
             "algoritmo": "kmeans",
@@ -305,26 +349,23 @@ def test_clustering_documento_ids_membership_with_duplicate_texts():
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["n_documentos"] == 8
+        assert data["n_documentos"] == 9
         assert len(data["clusters"]) == 2
         
-        todos_los_ids = []
-        for cluster in data["clusters"]:
-            assert "documento_ids" in cluster
-            assert isinstance(cluster["documento_ids"], list)
-            # La muestra de textos (documentos) está limitada a máximo 5
-            assert len(cluster["documentos"]) <= 5
-            # Pero documento_ids contiene TODOS los IDs asignados
-            assert len(cluster["documento_ids"]) == cluster["tamano"]
-            todos_los_ids.extend(cluster["documento_ids"])
-            
-        # Comprobar que los 8 IDs únicos fueron preservados y asignados sin pérdidas ni duplicaciones
-        ids_esperados = {
-            "doc-devops-1", "doc-devops-2", "doc-devops-3", "doc-devops-4",
-            "doc-front-1", "doc-front-2", "doc-front-3", "doc-front-4"
-        }
-        assert set(todos_los_ids) == ids_esperados
-        assert len(todos_los_ids) == 8
+        # Encontrar el cluster grande (DevOps con 7 documentos)
+        devops_cluster = next((c for c in data["clusters"] if c["tamano"] == 7), None)
+        assert devops_cluster is not None, f"Clusters devueltos: {data['clusters']}"
+        
+        # 1. documentos contiene exactamente la muestra máxima de 5
+        assert len(devops_cluster["documentos"]) == 5
+        
+        # 2. documento_ids contiene todos los miembros (7)
+        assert len(devops_cluster["documento_ids"]) == 7
+        assert devops_cluster["tamano"] == 7
+        
+        # 3. Textos idénticos con IDs distintos permanecen diferenciados
+        dev_ids_esperados = {f"dev-{i}" for i in range(1, 8)}
+        assert set(devops_cluster["documento_ids"]) == dev_ids_esperados
 
 
 def test_clustering_error_sanitization():
