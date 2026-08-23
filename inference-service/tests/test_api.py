@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import numpy as np
 import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
@@ -404,6 +405,94 @@ def test_clustering_deterministic_cluster_with_more_than_5_members():
         # 3. Textos idénticos con IDs distintos permanecen diferenciados
         dev_ids_esperados = {f"dev-{i}" for i in range(1, 8)}
         assert set(devops_cluster["documento_ids"]) == dev_ids_esperados
+
+
+def test_clustering_cluster_info_keeps_non_empty_top_keywords():
+    """Con palabras representativas, conserva términos, miembros, tamaño y preview."""
+    documentos = ["docker kubernetes despliegue"] * 6
+    documento_ids = [f"doc-{i}" for i in range(6)]
+
+    clusters = clustering_service._generar_info_clusters(
+        documentos,
+        documento_ids,
+        np.zeros(6, dtype=int),
+        np.array(["docker", "kubernetes", "despliegue"])
+    )
+
+    assert len(clusters) == 1
+    cluster = clusters[0]
+    assert cluster["palabras_clave"] == ["docker", "kubernetes", "despliegue"]
+    assert cluster["etiqueta_sugerida"] == "Docker / Kubernetes / Despliegue"
+    assert cluster["tamano"] == 6
+    assert cluster["documento_ids"] == documento_ids
+    assert len(cluster["documentos"]) == 5
+
+
+def test_clustering_cluster_info_uses_deterministic_fallback_for_empty_top_keywords():
+    """Un cluster sin coincidencias no evalúa ndarray como booleano y usa el fallback existente."""
+    documentos = ["contenido sin coincidencias"] * 6
+    documento_ids = [f"empty-{i}" for i in range(6)]
+
+    clusters = clustering_service._generar_info_clusters(
+        documentos,
+        documento_ids,
+        np.zeros(6, dtype=int),
+        np.array(["alpha", "beta", "gamma", "delta"])
+    )
+
+    assert len(clusters) == 1
+    cluster = clusters[0]
+    assert cluster["palabras_clave"] == ["alpha", "beta", "gamma"]
+    assert cluster["etiqueta_sugerida"] == "Alpha / Beta / Gamma"
+    assert cluster["tamano"] == 6
+    assert cluster["documento_ids"] == documento_ids
+    assert len(cluster["documentos"]) == 5
+
+
+def test_clustering_endpoint_handles_the_sixteen_document_regression_corpus():
+    """El corpus real que antes devolvía 400 mantiene todos los IDs y previews acotados."""
+    textos = [
+        "Este es un documento de prueba suficientemente largo para validar la clasificación integrada del sistema TechMind.",
+        "Este es un documento de prueba suficientemente largo para validar la clasificación integrada del sistema TechMind.",
+        "Este es un documento de prueba suficientemente largo para validar la clasificación integrada del sistema TechMind.",
+        "Este es un documento de prueba suficientemente largo para validar la clasificación integrada del sistema TechMind.",
+        "Auditoría funcional del pipeline Spring Boot con PostgreSQL y Flyway para validar persistencia reproducible.",
+        "Validación del servicio FastAPI con clasificación por lotes, clustering y extracción estable de palabras clave.",
+        "Verificación funcional del origen localhost para la clasificación integrada de TechMind con persistencia PostgreSQL.",
+        "Configuración de balanceadores de carga en Oracle Cloud Infrastructure (OCI) con SSL y balanceo por round-robin.",
+        "Implementación de componentes funcionales en React 19 con hooks personalizados y optimización con useMemo.",
+        "Diseño de arquitectura de microservicios con Spring Boot, Spring Data JPA y PostgreSQL en contenedores Docker.",
+        "Automatización de pipelines CI/CD en GitHub Actions para despliegue continuo de contenedores en Kubernetes.",
+        "Desarrollo de modelos de Machine Learning no supervisado con K-Means y vectorización TF-IDF en scikit-learn.",
+        "Configuración de reverse proxy Nginx con balanceo de carga upstream y terminación segura TLS/SSL.",
+        "Verificacion final MVP con termino unicofinale2e sobre Spring Boot PostgreSQL y FastAPI completamente integrados.",
+        "Arquitectura Docker Kubernetes OCI para despliegue continuo y automatizacion DevOps con contenedores seguros.",
+        "Guia Docker Kubernetes OCI para despliegue continuo, redes DevOps y operacion segura de contenedores."
+    ]
+    ids = [f"regression-{i}" for i in range(1, 17)]
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/predict/clustering",
+            json={
+                "documentos": [
+                    {"id": doc_id, "texto": texto}
+                    for doc_id, texto in zip(ids, textos)
+                ],
+                "algoritmo": "kmeans",
+                "idioma": "es"
+            }
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["n_documentos"] == 16
+    assert sum(cluster["tamano"] for cluster in data["clusters"]) == 16
+    assert {doc_id for cluster in data["clusters"] for doc_id in cluster["documento_ids"]} == set(ids)
+    assert all(len(cluster["documento_ids"]) == cluster["tamano"] for cluster in data["clusters"])
+    assert all(len(cluster["documentos"]) <= 5 for cluster in data["clusters"])
+    assert all(isinstance(cluster["palabras_clave"], list) for cluster in data["clusters"])
+    assert all(cluster["etiqueta_sugerida"] for cluster in data["clusters"])
 
 
 def test_clustering_error_sanitization():

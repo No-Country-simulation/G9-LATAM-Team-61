@@ -10,6 +10,18 @@ public record NotaResponse(
         Double probabilidad,
         List<String> palabrasClave,
         LocalDateTime fechaAnalisis,
-        Double tiempoProcesamientoMs
+        Double tiempoProcesamientoMs,
+        String feedbackUsuario
 ) {
+    public NotaResponse(
+            Long id,
+            String contenidoOriginal,
+            String categoria,
+            Double probabilidad,
+            List<String> palabrasClave,
+            LocalDateTime fechaAnalisis,
+            Double tiempoProcesamientoMs
+    ) {
+        this(id, contenidoOriginal, categoria, probabilidad, palabrasClave, fechaAnalisis, tiempoProcesamientoMs, null);
+    }
 }

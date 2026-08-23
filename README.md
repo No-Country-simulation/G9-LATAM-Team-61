@@ -3,7 +3,7 @@
 Organización inteligente de conocimiento técnico para la Hackathon ONE G9
 (Alura + Oracle), desarrollada por el equipo G9-LATAM-Team-61.
 
-> Estado: en construcción.
+> Estado: baseline integrada del MVP disponible para ejecución local.
 
 ## Objetivo
 
@@ -36,11 +36,39 @@ Frontend React → Backend Spring Boot → FastAPI/modelo
 La definición completa de responsabilidades y reglas vive en
 [`docs/repository-structure.md`](docs/repository-structure.md).
 
+## Ejecución local integrada
+
+Requisitos: Git, Docker Desktop y Docker Compose.
+
+```bash
+git clone https://github.com/No-Country-simulation/G9-LATAM-Team-61.git
+cd G9-LATAM-Team-61
+cp .env.example .env
+```
+
+Antes de iniciar, define una contraseña no vacía en `POSTGRES_PASSWORD` dentro
+de `.env`. Luego construye y levanta los cuatro servicios:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+Cuando todos los servicios estén `healthy`, abre
+[http://127.0.0.1:8080](http://127.0.0.1:8080).
+
+Para detener la baseline conservando PostgreSQL:
+
+```bash
+docker compose down
+```
+
+> `docker compose down -v` elimina el volumen PostgreSQL y todos sus datos.
+
 ## Desarrollo
 
 Cada componente conserva sus propias instrucciones de instalación, ejecución y
-pruebas. La ejecución integrada se incorporará en la raíz cuando los servicios
-necesarios estén disponibles.
+pruebas.
 
 Los cambios se realizan mediante ramas cortas y pull requests revisados. Consulta
 [`CONTRIBUTING.md`](CONTRIBUTING.md) antes de contribuir.

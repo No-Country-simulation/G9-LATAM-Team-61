@@ -153,6 +153,7 @@ public class NotaService {
         }
     }
 
+    @Transactional
     public NotaResponse registrarFeedback(Long id, FeedbackRequest request) {
         Nota nota = notaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("La nota especificada no existe"));
@@ -191,6 +192,7 @@ public class NotaService {
         return new HealthResponse(statusGlobal, componentes);
     }
 
+    @Transactional(readOnly = true)
     public List<NotaResponse> buscar(String query) {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("El parámetro de búsqueda no puede estar vacío");
@@ -202,6 +204,7 @@ public class NotaService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<NotaResponse> obtenerRecomendados(Long id) {
         if (id == null || !notaRepository.existsById(id)) {
             throw new IllegalArgumentException("La nota especificada no existe");
