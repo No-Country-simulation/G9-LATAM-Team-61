@@ -6,7 +6,7 @@ from app.config import MAX_CLUSTERING_DOCS
 
 class DocumentoCluster(BaseModel):
     """Un documento para clusterizar"""
-    id: Optional[str] = Field(None, description="ID único del documento")
+    id: Optional[str | int] = Field(None, description="ID único del documento")
     texto: str = Field(..., min_length=3, max_length=5000)
     metadata: Optional[Dict[str, Any]] = None
     
@@ -16,6 +16,13 @@ class DocumentoCluster(BaseModel):
         if len(v.strip()) < 3:
             raise ValueError('El texto debe tener al menos 3 caracteres')
         return v.strip()
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def validar_id(cls, v: Any) -> Optional[str]:
+        if v is not None:
+            return str(v)
+        return None
 
 class ClusteringRequest(BaseModel):
     """Solicitud de clustering"""
@@ -46,7 +53,8 @@ class ClusterInfo(BaseModel):
     tamano: int
     palabras_clave: List[str] = Field(..., max_length=10)
     etiqueta_sugerida: str
-    documentos: List[str] = Field(..., max_length=5)  # Top 5 documentos
+    documentos: List[str] = Field(..., max_length=5)  # Muestra representativa de hasta 5 documentos
+    documento_ids: List[str] = Field(default_factory=list, description="Lista completa de IDs de los documentos asignados al cluster")
 
 class ClusteringResponse(BaseModel):
     """Respuesta de clustering"""

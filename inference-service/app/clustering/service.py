@@ -20,13 +20,17 @@ class ClusteringService:
     def clusterizar(
         self,
         documentos: List[str],
+        documento_ids: List[str] = None,
         n_clusters: int = None,
         algoritmo: str = "kmeans",
         idioma: str = "es"
     ) -> Dict[str, Any]:
-        """Realiza el clustering de documentos de forma stateless y segura"""
+        """Realiza el clustering de documentos de forma stateless y segura conservando IDs"""
         
         start_time = time.time()
+        
+        if documento_ids is None:
+            documento_ids = [str(i) for i in range(len(documentos))]
         
         # 1. Instanciar preprocesador local por petición (Thread-Safe)
         preprocessor = ClusteringPreprocessor()
@@ -43,9 +47,10 @@ class ClusteringService:
         local_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
         labels = local_model.fit_predict(vectores)
         
-        # 4. Generar información detallada de clusters
+        # 4. Generar información detallada de clusters vinculando IDs
         clusters_info = self._generar_info_clusters(
-            documentos, 
+            documentos,
+            documento_ids,
             labels,
             preprocessor.feature_names
         )
@@ -86,16 +91,18 @@ class ClusteringService:
     def _generar_info_clusters(
         self,
         documentos: List[str],
+        documento_ids: List[str],
         labels: np.ndarray,
         feature_names: List[str]
     ) -> List[Dict]:
-        """Genera información detallada de cada cluster"""
+        """Genera información detallada de cada cluster asociando todos sus documento_ids"""
         clusters_info = []
         unique_labels = sorted(list(set(labels)))
         
         for cluster_id in unique_labels:
             mask = labels == cluster_id
             docs_cluster = [doc for doc, m in zip(documentos, mask) if m]
+            ids_cluster = [doc_id for doc_id, m in zip(documento_ids, mask) if m]
             
             # Palabras más representativas
             palabras_cluster = []
@@ -114,7 +121,8 @@ class ClusteringService:
                 'tamano': len(docs_cluster),
                 'palabras_clave': top_palabras,
                 'etiqueta_sugerida': etiqueta,
-                'documentos': docs_cluster[:5]
+                'documentos': docs_cluster[:5],
+                'documento_ids': ids_cluster
             })
         
         return clusters_info

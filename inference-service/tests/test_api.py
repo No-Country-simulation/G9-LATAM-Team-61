@@ -245,7 +245,7 @@ def test_predict_batch_element_too_long_rejected():
         assert response.status_code == 422
 
 
-# 11. Clustering Temático K-Means y Sanitización de Errores
+# 11. Clustering Temático K-Means y Validación de documento_ids
 def test_clustering_kmeans():
     with TestClient(app) as client:
         payload = {
@@ -268,6 +268,63 @@ def test_clustering_kmeans():
         assert "clusters" in data
         assert "n_documentos" in data
         assert data["n_documentos"] == 4
+        
+        for cluster in data["clusters"]:
+            assert "documento_ids" in cluster
+            assert isinstance(cluster["documento_ids"], list)
+            assert len(cluster["documento_ids"]) == cluster["tamano"]
+
+
+def test_clustering_documento_ids_membership_with_duplicate_texts():
+    """
+    Prueba de membresía por IDs: Más de 5 documentos incluyendo textos repetidos
+    para verificar que cada documento mantiene su ID único asignado a su respectivo cluster.
+    """
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                # 4 Documentos sobre DevOps (2 de ellos con texto exactamente repetido)
+                {"id": "doc-devops-1", "texto": "Despliegue y orquestación con Docker y Kubernetes en infraestructura Cloud."},
+                {"id": "doc-devops-2", "texto": "Despliegue y orquestación con Docker y Kubernetes en infraestructura Cloud."}, # Repetido
+                {"id": "doc-devops-3", "texto": "Configuración de balanceadores Nginx en contenedores Docker y proxy inverso."},
+                {"id": "doc-devops-4", "texto": "Infraestructura como código con Terraform para Docker y Kubernetes."},
+                # 4 Documentos sobre Frontend (2 de ellos con texto exactamente repetido)
+                {"id": "doc-front-1", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState useEffect."},
+                {"id": "doc-front-2", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState useEffect."}, # Repetido
+                {"id": "doc-front-3", "texto": "Diseño de componentes web modernos con CSS Grid y TailwindCSS responsivo."},
+                {"id": "doc-front-4", "texto": "Optimización del renderizado en React con useMemo y useCallback reactivo."}
+            ],
+            "n_clusters": 2,
+            "algoritmo": "kmeans",
+            "idioma": "es"
+        }
+        
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["n_documentos"] == 8
+        assert len(data["clusters"]) == 2
+        
+        todos_los_ids = []
+        for cluster in data["clusters"]:
+            assert "documento_ids" in cluster
+            assert isinstance(cluster["documento_ids"], list)
+            # La muestra de textos (documentos) está limitada a máximo 5
+            assert len(cluster["documentos"]) <= 5
+            # Pero documento_ids contiene TODOS los IDs asignados
+            assert len(cluster["documento_ids"]) == cluster["tamano"]
+            todos_los_ids.extend(cluster["documento_ids"])
+            
+        # Comprobar que los 8 IDs únicos fueron preservados y asignados sin pérdidas ni duplicaciones
+        ids_esperados = {
+            "doc-devops-1", "doc-devops-2", "doc-devops-3", "doc-devops-4",
+            "doc-front-1", "doc-front-2", "doc-front-3", "doc-front-4"
+        }
+        assert set(todos_los_ids) == ids_esperados
+        assert len(todos_los_ids) == 8
 
 
 def test_clustering_error_sanitization():
