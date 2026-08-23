@@ -1,0 +1,17 @@
+ALTER TABLE notas ADD COLUMN IF NOT EXISTS tiempo_procesamiento_ms DOUBLE PRECISION;
+ALTER TABLE notas ADD COLUMN IF NOT EXISTS cluster_id INTEGER;
+ALTER TABLE notas ADD COLUMN IF NOT EXISTS version_modelo VARCHAR(50);
+ALTER TABLE notas ADD COLUMN IF NOT EXISTS feedback_usuario VARCHAR(100);
+
+CREATE TABLE IF NOT EXISTS clusters (
+    id INTEGER PRIMARY KEY,
+    nombre_sugerido VARCHAR(255) NOT NULL,
+    total_documentos INTEGER DEFAULT 0,
+    fecha_generacion TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS cluster_palabras_clave (
+    cluster_id INTEGER NOT NULL,
+    palabra VARCHAR(255),
+    CONSTRAINT fk_cluster_palabras FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+);

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  fastapi-inference:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kms-fastapi-inference
+    ports:
+      - "8000:8000"
+    environment:
+      - MIN_TEXT_LENGTH=30
+      - MAX_TEXT_LENGTH=5000
+      - TRANSLATOR_BACKEND=none
+      - TRANSLATE_TARGET_LANG=en
+      - KEYWORDS_TOP_N=8
+      - MAX_BATCH_SIZE=100
+      - MAX_CLUSTERING_DOCS=200
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  default:
+    name: kms-network

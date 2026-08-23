@@ -26,27 +26,27 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         notaRepository.saveAll(List.of(
-                crearNota("Documentación de Servidores", "DevOps", 0.94,
+                crearNota("DevOps", 0.94,
                         List.of("OCI", "Docker", "Balanceadores"),
                         "Configuración de balanceadores de carga en OCI usando Docker."),
 
-                crearNota("Pipeline de CI/CD", "DevOps", 0.91,
+                crearNota("DevOps", 0.91,
                         List.of("GitHub Actions", "CI/CD"),
                         "Automatización de despliegues con GitHub Actions."),
 
-                crearNota("Guía useEffect React", "Frontend", 0.87,
+                crearNota("Frontend", 0.87,
                         List.of("react", "hooks"),
                         "Patrones de uso del hook useEffect en componentes funcionales."),
 
-                crearNota("Migración a Spring Boot 4", "Backend", 0.92,
+                crearNota("Backend", 0.92,
                         List.of("Spring Boot", "Jackson"),
                         "Actualización del proyecto de Spring Boot 3.5 a la versión 4.1."),
 
-                crearNota("Manejo de errores JWT", "Backend", 0.89,
+                crearNota("Backend", 0.89,
                         List.of("spring", "auth", "token"),
                         "Implementación de autenticación JWT con manejo de excepciones."),
 
-                crearNota("Nota de prueba variada", "Otros", 0.75,
+                crearNota("Otros", 0.75,
                         List.of("misceláneo"),
                         "Contenido de ejemplo que no encaja en una categoría específica.")
         ));
@@ -54,15 +54,15 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Datos de prueba (seed) cargados correctamente.");
     }
 
-    private Nota crearNota(String titulo, String categoria, Double probabilidad,
+    private Nota crearNota(String categoria, Double probabilidad,
                            List<String> palabrasClave, String contenidoOriginal) {
         Nota nota = new Nota();
-        nota.setTitulo(titulo);
         nota.setCategoria(categoria);
         nota.setProbabilidad(probabilidad);
         nota.setPalabrasClave(palabrasClave);
         nota.setContenidoOriginal(contenidoOriginal);
         nota.setFechaAnalisis(LocalDateTime.now());
+        nota.setTiempoProcesamientoMs(25.0);
         return nota;
     }
 }

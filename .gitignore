@@ -61,6 +61,8 @@ target/
 *.feather
 *.arrow
 *.pkl
+# Artefacto aprobado del servicio de inferencia; los demas .pkl siguen ignorados.
+!inference-service/**/modelo_hacka.pkl
 *.joblib
 *.onnx
 

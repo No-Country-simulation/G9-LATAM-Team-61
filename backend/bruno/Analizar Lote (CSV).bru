@@ -1,0 +1,15 @@
+meta {
+  name: Analizar Lote (CSV)
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:8080/api/contenido/lote
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  file: @file(notas_ejemplo.csv)
+}
