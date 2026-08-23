@@ -5,19 +5,27 @@ import Card from '../common/Card';
 /**
  * Recent Processed Documents Table Component (Últimos Procesados - Phase 4)
  */
-export function RecentTable({ documents, searchQuery, onOpenHistory }) {
-  const filteredDocs = documents.filter((doc) => {
+export function RecentTable({
+  documents = [],
+  historyError = null,
+  searchQuery = '',
+  onOpenHistory,
+  onViewDetail,
+  onViewRecommendations,
+}) {
+  const filteredDocs = (documents || []).filter((doc) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      doc.title.toLowerCase().includes(q) ||
-      doc.category.toLowerCase().includes(q) ||
-      doc.tags.toLowerCase().includes(q)
+      (doc.content && doc.content.toLowerCase().includes(q)) ||
+      (doc.title && doc.title.toLowerCase().includes(q)) ||
+      (doc.category && doc.category.toLowerCase().includes(q)) ||
+      (doc.tags && doc.tags.toLowerCase().includes(q))
     );
   });
 
-  // Show top 3 recent documents in the dashboard card
-  const recentDocs = filteredDocs.slice(0, 3);
+  // Show top 5 recent documents in the dashboard card
+  const recentDocs = filteredDocs.slice(0, 5);
 
   return (
     <div>
@@ -40,33 +48,112 @@ export function RecentTable({ documents, searchQuery, onOpenHistory }) {
           style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)' }}
           onClick={onOpenHistory}
         >
-          Ver todos
+          Ver todos ({documents.length})
         </button>
       </h2>
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <table>
+      <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ background: 'var(--bg-app)' }}>
             <tr>
-              <th>TÍTULO</th>
-              <th>CATEGORÍA</th>
-              <th>TAGS (TF-IDF)</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>EXTRACTO / CONTENIDO</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem', width: '110px' }}>CATEGORÍA</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem' }}>TAGS (TF-IDF)</th>
+              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', width: '140px' }}>ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="recent-tbody">
-            {recentDocs.length > 0 ? (
+            {historyError ? (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--accent-red)', padding: '2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <svg className="icon" viewBox="0 0 24 24" style={{ color: 'var(--accent-red)' }}>
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span style={{ fontWeight: 600 }}>Error al consultar el historial:</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{historyError}</span>
+                  </div>
+                </td>
+              </tr>
+            ) : recentDocs.length > 0 ? (
               recentDocs.map((doc) => (
-                <tr key={doc.id} className="fade-in">
-                  <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{doc.title}</td>
-                  <td>
+                <tr key={doc.id} className="fade-in" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td
+                    style={{
+                      padding: '0.7rem 1rem',
+                      color: 'var(--text-primary)',
+                      fontWeight: 500,
+                      maxWidth: '220px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={doc.content || doc.title}
+                  >
+                    {doc.content
+                      ? doc.content.length > 48
+                        ? doc.content.slice(0, 48) + '...'
+                        : doc.content
+                      : doc.title}
+                  </td>
+                  <td style={{ padding: '0.7rem 0.8rem', whiteSpace: 'nowrap' }}>
                     <Badge category={doc.category}>{doc.category}</Badge>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{doc.tags}</td>
+                  <td
+                    style={{
+                      padding: '0.7rem 0.8rem',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.82rem',
+                      maxWidth: '180px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={doc.tags}
+                  >
+                    {doc.tags || '—'}
+                  </td>
+                  <td style={{ padding: '0.7rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '3px 8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--bg-card)',
+                        }}
+                        onClick={() => onViewDetail && onViewDetail(doc)}
+                        title="Ver detalle completo de la nota"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '3px 8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--bg-card)',
+                        }}
+                        onClick={() => onViewRecommendations && onViewRecommendations(doc)}
+                        title="Ver documentos recomendados afines"
+                      >
+                        Similares
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-                  No se encontraron documentos coincidentes
+                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                  {searchQuery
+                    ? `No se encontraron notas con el término "${searchQuery}".`
+                    : 'No hay documentos registrados aún en la base de datos.'}
                 </td>
               </tr>
             )}

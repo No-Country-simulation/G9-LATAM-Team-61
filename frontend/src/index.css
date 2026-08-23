@@ -101,7 +101,7 @@ td { font-weight: 500; }
 .badge.mobile { background: #FFE4E6; color: #E11D48; }
 
 /* Clusters */
-.cluster-folder { background: #F8FAFC; border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; cursor: pointer;}
+.cluster-folder { background: #F8FAFC; border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; transition: all 0.2s; cursor: pointer;}
 .cluster-folder:hover { border-color: var(--brand-primary); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .cluster-folder .icon { color: var(--text-secondary); }
 

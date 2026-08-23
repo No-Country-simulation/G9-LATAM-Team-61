@@ -3,20 +3,11 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 
 export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
-  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [validationError, setValidationError] = useState('');
 
-  const MIN_CHARS = 10;
-  const MAX_CHARS = 10000;
-  const MAX_TITLE_CHARS = 500;
-
-  const handleTitleChange = (e) => {
-    const val = e.target.value;
-    if (val.length <= MAX_TITLE_CHARS) {
-      setTitle(val);
-    }
-  };
+  const MIN_CHARS = 30;
+  const MAX_CHARS = 5000;
 
   const handleContentChange = (e) => {
     const val = e.target.value;
@@ -36,12 +27,12 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
     const trimmedContent = content.trim();
 
     if (!trimmedContent) {
-      setValidationError('Por favor ingresa el contenido a clasificar.');
+      setValidationError('Por favor ingresa el contenido técnico a clasificar.');
       return;
     }
 
     if (trimmedContent.length < MIN_CHARS) {
-      setValidationError(`El contenido debe tener al menos ${MIN_CHARS} caracteres.`);
+      setValidationError(`El contenido debe tener al menos ${MIN_CHARS} caracteres (actual: ${trimmedContent.length}).`);
       return;
     }
 
@@ -53,9 +44,8 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
     setValidationError('');
 
     // Call onClassify and ONLY clear inputs if classification succeeds!
-    const success = await onClassify({ title, content: trimmedContent });
+    const success = await onClassify({ content: trimmedContent });
     if (success) {
-      setTitle('');
       setContent('');
       setValidationError('');
     }
@@ -74,25 +64,7 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="doc-title">Título (Opcional)</label>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                {title.length} / {MAX_TITLE_CHARS}
-              </span>
-            </div>
-            <input
-              id="doc-title"
-              type="text"
-              className="form-control"
-              placeholder="Ej: Configuración Nginx"
-              value={title}
-              maxLength={MAX_TITLE_CHARS}
-              onChange={handleTitleChange}
-            />
-          </div>
-
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="doc-content">Contenido Crudo (10 a 10,000 caracteres) *</label>
+              <label htmlFor="doc-content">Contenido Técnico (30 a 5,000 caracteres) *</label>
               <span
                 style={{
                   fontSize: '0.75rem',
@@ -107,8 +79,8 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
             <textarea
               id="doc-content"
               className="form-control"
-              rows="4"
-              placeholder="Pega la documentación o logs aquí (mínimo 10 caracteres)..."
+              rows="5"
+              placeholder="Pega la documentación técnica, logs o consultas aquí (mínimo 30 y máximo 5,000 caracteres)..."
               value={content}
               onChange={handleContentChange}
               style={{
@@ -117,7 +89,7 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
             ></textarea>
             {validationError && (
               <span style={{ fontSize: '0.8rem', color: '#E11D48', marginTop: '0.3rem', display: 'block' }}>
-                ⚠️ {validationError}
+                {validationError}
               </span>
             )}
           </div>
@@ -148,7 +120,7 @@ export function DataInputForm({ onClassify, onOpenUpload, isProcessing }) {
                 <line x1="12" y1="18" x2="12" y2="12"></line>
                 <polyline points="9 15 12 12 15 15"></polyline>
               </svg>
-              CSV Lotes (Demo)
+              CSV / Lotes
             </Button>
           </div>
         </form>

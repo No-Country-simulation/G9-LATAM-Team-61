@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Header from './components/layout/Header';
 import Toast from './components/common/Toast';
 import DataInputForm from './components/classification/DataInputForm';
@@ -6,144 +6,73 @@ import ResultModal from './components/classification/ResultModal';
 import AnalyticsSearch from './components/dashboard/AnalyticsSearch';
 import RecentTable from './components/dashboard/RecentTable';
 import HistoryModal from './components/dashboard/HistoryModal';
+import RecommendedModal from './components/dashboard/RecommendedModal';
 import ClusterWidget from './components/clustering/ClusterWidget';
 import ClustersModal from './components/clustering/ClustersModal';
 import UploadModal from './components/bulk/UploadModal';
 import ConfigModal from './components/modals/ConfigModal';
 import ApiDocsModal from './components/modals/ApiDocsModal';
 
-import {
-  classifyContent,
-  checkBackendHealth,
-  INITIAL_DOCUMENTS,
-  INITIAL_CLUSTERS,
-} from './services/kmsApi';
+import { useToast } from './hooks/useToast';
+import { useModals } from './hooks/useModals';
+import { useKmsData } from './hooks/useKmsData';
 import './App.css';
 
 export function App() {
-  const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
-  const [clusters] = useState(INITIAL_CLUSTERS);
-  const [totalCount, setTotalCount] = useState(1204);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { toastState, showToast, closeToast } = useToast();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isReclustering, setIsReclustering] = useState(false);
-  const [isApiLive, setIsApiLive] = useState(false);
+  const {
+    activeModal,
+    setActiveModal,
+    closeModal,
+    resultData,
+    openResultModal,
+    recommendedBaseDoc,
+    recommendations,
+    isLoadingRecommendations,
+    openRecommendationsModal,
+  } = useModals(showToast);
 
-  const [activeModal, setActiveModal] = useState(null);
-  const [resultData, setResultData] = useState(null);
+  const {
+    documents,
+    clusters,
+    stats,
+    categories,
+    selectedCategory,
+    searchQuery,
+    setSearchQuery,
+    isSearching,
+    isProcessing,
+    isReclustering,
+    isProcessingBatch,
+    isSendingFeedback,
+    isApiLive,
+    historyError,
+    reloadDashboardData,
+    handleClassify,
+    handlePerformSearch,
+    handleSelectCategory,
+    handleRecluster,
+    handleProcessBatch,
+    handleSendFeedback,
+  } = useKmsData(showToast);
 
-  const toastTimerRef = React.useRef(null);
-
-  const [toastState, setToastState] = useState({
-    visible: false,
-    message: '',
-    type: 'info',
-  });
-
-  // Check API Connection status on mount
-  useEffect(() => {
-    async function verifyHealth() {
-      const isAlive = await checkBackendHealth();
-      setIsApiLive(isAlive);
-    }
-    verifyHealth();
-  }, []);
-
-  // ESC key listener to close modals
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && activeModal) {
-        setActiveModal(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeModal]);
-
-  const showToast = (message, type = 'info') => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToastState({ visible: true, message, type });
-    toastTimerRef.current = setTimeout(() => {
-      setToastState((prev) => ({ ...prev, visible: false }));
-    }, 3500);
-  };
-
-  const handleCloseToast = () => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToastState((prev) => ({ ...prev, visible: false }));
-  };
-
-  const handleClassify = async (formData) => {
-    if (!formData || !formData.content) {
-      showToast('Por favor ingresa al menos el contenido crudo a clasificar', 'error');
-      return false;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const result = await classifyContent(formData);
-      setIsProcessing(false);
-
-      setDocuments((prev) => [result, ...prev]);
-      setTotalCount((prev) => prev + 1);
-      setResultData(result);
-      setActiveModal('result');
-
-      if (result.isLiveApi) {
-        showToast('¡Documento clasificado en vivo por Spring Boot!', 'success');
-      } else {
-        showToast('¡Documento clasificado e indexado (Modo Demo Local)!', 'success');
-      }
-      return true;
-    } catch (err) {
-      setIsProcessing(false);
-      showToast(err.message || 'Error en el servicio de clasificación de contenido', 'error');
-      return false;
-    }
-  };
-
-  const handleRecluster = () => {
-    setIsReclustering(true);
-    setTimeout(() => {
-      setIsReclustering(false);
-      showToast('Algoritmo K-Means re-ejecutado. 8 Clusters actualizados.', 'success');
-    }, 1200);
-  };
-
-  const handleProcessBatch = (count = 2000) => {
-    showToast(`Lote de ${count.toLocaleString()} registros enviado a FastAPI. Procesando en segundo plano...`, 'success');
-    setTimeout(() => {
-      setTotalCount((prev) => prev + count);
-    }, 1000);
-  };
-
-  const handleSaveConfig = () => {
-    showToast('Configuraciones guardadas correctamente', 'success');
+  const onSaveConfig = () => {
+    showToast('Configuración actualizada correctamente', 'success');
+    reloadDashboardData();
   };
 
   return (
     <div className="main-content-wrapper" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-      {/* Toast Notification Banner */}
-      <Toast toastState={toastState} onClose={handleCloseToast} />
+      <Toast toastState={toastState} onClose={closeToast} />
 
       <main className="main-content">
-        {/* Top Bar Header (Fase 1 + Fase 6 Status) */}
-        <Header
-          onOpenConfig={() => setActiveModal('config')}
-          onOpenApiDocs={() => setActiveModal('api')}
-          isApiLive={isApiLive}
-        />
+        <Header isApiLive={isApiLive} />
 
-        {/* FILA 1: Top Grid completo */}
+        {/* Fila 1: Formulario & Búsqueda Semántica */}
         <div className="top-grid">
           <DataInputForm
-            onClassify={handleClassify}
+            onClassify={(formData) => handleClassify(formData, openResultModal)}
             onOpenUpload={() => setActiveModal('upload')}
             isProcessing={isProcessing}
           />
@@ -151,16 +80,26 @@ export function App() {
           <AnalyticsSearch
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            totalCount={totalCount}
+            onPerformSearch={handlePerformSearch}
+            isSearching={isSearching}
+            totalCount={documents.length}
+            stats={stats}
+            clustersCount={clusters.length}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
           />
         </div>
 
-        {/* FILA 2: Bottom Grid completo */}
+        {/* Fila 2: Tabla de Historial & Tendencias K-Means */}
         <section id="sec-resultados" className="bottom-grid">
           <RecentTable
             documents={documents}
+            historyError={historyError}
             searchQuery={searchQuery}
             onOpenHistory={() => setActiveModal('history')}
+            onViewDetail={openResultModal}
+            onViewRecommendations={openRecommendationsModal}
           />
 
           <ClusterWidget
@@ -172,40 +111,54 @@ export function App() {
         </section>
       </main>
 
-      {/* Modals de la Aplicación */}
+      {/* Modales de la Aplicación */}
       <ResultModal
         isOpen={activeModal === 'result'}
-        onClose={() => setActiveModal(null)}
+        onClose={closeModal}
         resultData={resultData}
+        onSendFeedback={handleSendFeedback}
+        isSendingFeedback={isSendingFeedback}
       />
 
       <HistoryModal
         isOpen={activeModal === 'history'}
-        onClose={() => setActiveModal(null)}
+        onClose={closeModal}
         documents={documents}
+        historyError={historyError}
+        onViewDetail={openResultModal}
+        onViewRecommendations={openRecommendationsModal}
+      />
+
+      <RecommendedModal
+        isOpen={activeModal === 'recommended'}
+        onClose={closeModal}
+        baseDocument={recommendedBaseDoc}
+        recommendations={recommendations}
+        isLoading={isLoadingRecommendations}
       />
 
       <ClustersModal
         isOpen={activeModal === 'clusters'}
-        onClose={() => setActiveModal(null)}
+        onClose={closeModal}
         clusters={clusters}
       />
 
       <UploadModal
         isOpen={activeModal === 'upload'}
-        onClose={() => setActiveModal(null)}
+        onClose={closeModal}
         onProcessBatch={handleProcessBatch}
+        isProcessingBatch={isProcessingBatch}
       />
 
       <ConfigModal
         isOpen={activeModal === 'config'}
-        onClose={() => setActiveModal(null)}
-        onSaveConfig={handleSaveConfig}
+        onClose={closeModal}
+        onSaveConfig={onSaveConfig}
       />
 
       <ApiDocsModal
         isOpen={activeModal === 'api'}
-        onClose={() => setActiveModal(null)}
+        onClose={closeModal}
       />
     </div>
   );
