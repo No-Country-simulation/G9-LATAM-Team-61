@@ -5,6 +5,7 @@ from datetime import datetime
 from app.config import MAX_CLUSTERING_DOCS
 
 class DocumentoCluster(BaseModel):
+<<<<<<< HEAD
     """Un documento para clusterizar con ID obligatorio e inequívoco"""
     id: str = Field(..., description="ID único y obligatorio del documento")
     texto: str = Field(..., min_length=3, max_length=5000)
@@ -20,15 +21,30 @@ class DocumentoCluster(BaseModel):
             raise ValueError('El campo id no puede estar vacío o contener solo espacios.')
         return str_val
 
+=======
+    """Un documento para clusterizar"""
+    id: Optional[str] = Field(None, description="ID único del documento")
+    texto: str = Field(..., min_length=3, max_length=5000)
+    metadata: Optional[Dict[str, Any]] = None
+    
+>>>>>>> origin/main
     @field_validator('texto')
     @classmethod
     def validar_texto(cls, v: str) -> str:
         if len(v.strip()) < 3:
+<<<<<<< HEAD
             raise ValueError('El texto debe tener al menos 3 caracteres.')
         return v.strip()
 
 class ClusteringRequest(BaseModel):
     """Solicitud de clustering con validación de unicidad de IDs"""
+=======
+            raise ValueError('El texto debe tener al menos 3 caracteres')
+        return v.strip()
+
+class ClusteringRequest(BaseModel):
+    """Solicitud de clustering"""
+>>>>>>> origin/main
     documentos: List[DocumentoCluster] = Field(
         ..., 
         min_length=2,
@@ -50,6 +66,7 @@ class ClusteringRequest(BaseModel):
         description="Idioma: es (español) o en (inglés)"
     )
 
+<<<<<<< HEAD
     @field_validator('documentos')
     @classmethod
     def validar_unicidad_ids(cls, docs: List[DocumentoCluster]) -> List[DocumentoCluster]:
@@ -64,14 +81,20 @@ class ClusteringRequest(BaseModel):
             raise ValueError(f"Los IDs de los documentos deben ser únicos en la solicitud. IDs duplicados detectados: {sorted(list(dups))}")
         return docs
 
+=======
+>>>>>>> origin/main
 class ClusterInfo(BaseModel):
     """Información de un cluster"""
     cluster_id: int
     tamano: int
     palabras_clave: List[str] = Field(..., max_length=10)
     etiqueta_sugerida: str
+<<<<<<< HEAD
     documentos: List[str] = Field(..., max_length=5)  # Muestra representativa de hasta 5 documentos
     documento_ids: List[str] = Field(default_factory=list, description="Lista completa de IDs de los documentos asignados al cluster")
+=======
+    documentos: List[str] = Field(..., max_length=5)  # Top 5 documentos
+>>>>>>> origin/main
 
 class ClusteringResponse(BaseModel):
     """Respuesta de clustering"""

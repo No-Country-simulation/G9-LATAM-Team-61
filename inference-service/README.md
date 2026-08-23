@@ -51,8 +51,12 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 ### 3. Clustering No Supervisado (K-Means)
 
 * **Ruta:** `POST /predict/clustering`
+<<<<<<< HEAD
 * **Payload:** `{ "documentos": [{"id": "doc-1", "texto": "..."}], "n_clusters": 2, "algoritmo": "kmeans", "idioma": "es" }`
 * **Respuesta en cada cluster:** Retorna `documento_ids: ["doc-1", ...]` (todos los IDs asignados para integración con backend), `documentos: [...]` (muestra de hasta 5 textos), `palabras_clave` y métricas de calidad.
+=======
+* **Payload:** `{ "documentos": [{"id": "1", "texto": "..."}], "n_clusters": 2, "algoritmo": "kmeans", "idioma": "es" }`
+>>>>>>> origin/main
 * **Restricciones:** Entre 2 y 200 documentos por solicitud. Ejecución 100% *stateless* y segura para concurrencia.
 
 ---

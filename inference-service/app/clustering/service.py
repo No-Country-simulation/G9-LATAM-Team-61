@@ -20,11 +20,15 @@ class ClusteringService:
     def clusterizar(
         self,
         documentos: List[str],
+<<<<<<< HEAD
         documento_ids: List[str] = None,
+=======
+>>>>>>> origin/main
         n_clusters: int = None,
         algoritmo: str = "kmeans",
         idioma: str = "es"
     ) -> Dict[str, Any]:
+<<<<<<< HEAD
         """Realiza el clustering de documentos de forma stateless y segura conservando IDs"""
         
         start_time = time.time()
@@ -32,6 +36,12 @@ class ClusteringService:
         if documento_ids is None:
             documento_ids = [str(i) for i in range(len(documentos))]
         
+=======
+        """Realiza el clustering de documentos de forma stateless y segura"""
+        
+        start_time = time.time()
+        
+>>>>>>> origin/main
         # 1. Instanciar preprocesador local por petición (Thread-Safe)
         preprocessor = ClusteringPreprocessor()
         logger.info(f"Preprocesando {len(documentos)} documentos para clustering...")
@@ -47,10 +57,16 @@ class ClusteringService:
         local_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
         labels = local_model.fit_predict(vectores)
         
+<<<<<<< HEAD
         # 4. Generar información detallada de clusters vinculando IDs
         clusters_info = self._generar_info_clusters(
             documentos,
             documento_ids,
+=======
+        # 4. Generar información detallada de clusters
+        clusters_info = self._generar_info_clusters(
+            documentos, 
+>>>>>>> origin/main
             labels,
             preprocessor.feature_names
         )
@@ -91,18 +107,28 @@ class ClusteringService:
     def _generar_info_clusters(
         self,
         documentos: List[str],
+<<<<<<< HEAD
         documento_ids: List[str],
         labels: np.ndarray,
         feature_names: List[str]
     ) -> List[Dict]:
         """Genera información detallada de cada cluster asociando todos sus documento_ids"""
+=======
+        labels: np.ndarray,
+        feature_names: List[str]
+    ) -> List[Dict]:
+        """Genera información detallada de cada cluster"""
+>>>>>>> origin/main
         clusters_info = []
         unique_labels = sorted(list(set(labels)))
         
         for cluster_id in unique_labels:
             mask = labels == cluster_id
             docs_cluster = [doc for doc, m in zip(documentos, mask) if m]
+<<<<<<< HEAD
             ids_cluster = [doc_id for doc_id, m in zip(documento_ids, mask) if m]
+=======
+>>>>>>> origin/main
             
             # Palabras más representativas
             palabras_cluster = []
@@ -121,8 +147,12 @@ class ClusteringService:
                 'tamano': len(docs_cluster),
                 'palabras_clave': top_palabras,
                 'etiqueta_sugerida': etiqueta,
+<<<<<<< HEAD
                 'documentos': docs_cluster[:5],
                 'documento_ids': ids_cluster
+=======
+                'documentos': docs_cluster[:5]
+>>>>>>> origin/main
             })
         
         return clusters_info

@@ -11,22 +11,36 @@ router = APIRouter(tags=["Clustering"])
     response_model=ClusteringResponse,
     status_code=status.HTTP_200_OK,
     summary="Agrupar documentos por temas similares",
+<<<<<<< HEAD
     description="Agrupa automáticamente documentos en clusters temáticos usando K-Means y TF-IDF, preservando los IDs de los documentos."
 )
 def predict_clustering(request: ClusteringRequest):
     try:
         if len(request.documentos) < 2:
+=======
+    description="Agrupa automáticamente documentos en clusters temáticos usando K-Means y TF-IDF"
+)
+def predict_clustering(request: ClusteringRequest):
+    try:
+        textos = [doc.texto for doc in request.documentos if doc.texto and doc.texto.strip()]
+        if len(textos) < 2:
+>>>>>>> origin/main
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Se necesitan al menos 2 documentos válidos para realizar clustering."
             )
         
+<<<<<<< HEAD
         textos = [doc.texto for doc in request.documentos]
         doc_ids = [doc.id for doc in request.documentos]
         
         resultado = clustering_service.clusterizar(
             documentos=textos,
             documento_ids=doc_ids,
+=======
+        resultado = clustering_service.clusterizar(
+            documentos=textos,
+>>>>>>> origin/main
             n_clusters=request.n_clusters,
             algoritmo=request.algoritmo or "kmeans",
             idioma=request.idioma or "es"
