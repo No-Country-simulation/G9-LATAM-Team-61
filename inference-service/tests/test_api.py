@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
+import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
 from app.model_loader import loader
 from app.config import MODEL_FILE
+from app.clustering.service import clustering_service
 
 
 # 1. Prueba de Existencia y Carga del Modelo Canónico
@@ -245,7 +247,7 @@ def test_predict_batch_element_too_long_rejected():
         assert response.status_code == 422
 
 
-# 11. Clustering Temático K-Means y Sanitización de Errores
+# 11. Clustering Temático K-Means y Validación de documento_ids
 def test_clustering_kmeans():
     with TestClient(app) as client:
         payload = {
@@ -268,6 +270,140 @@ def test_clustering_kmeans():
         assert "clusters" in data
         assert "n_documentos" in data
         assert data["n_documentos"] == 4
+        
+        for cluster in data["clusters"]:
+            assert "documento_ids" in cluster
+            assert isinstance(cluster["documento_ids"], list)
+            assert len(cluster["documento_ids"]) == cluster["tamano"]
+
+
+def test_clustering_duplicate_ids_rejected():
+    """Valida que IDs duplicados en la solicitud de clustering sean rechazados con 422."""
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                {"id": "doc-duplicado", "texto": "Configuración de contenedores Docker en servidor Linux."},
+                {"id": "doc-duplicado", "texto": "Despliegue de aplicaciones React con TypeScript."}
+            ]
+        }
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 422
+
+
+def test_clustering_null_or_empty_id_rejected():
+    """Valida que IDs nulos o vacíos sean rechazados con 422."""
+    with TestClient(app) as client:
+        # Caso ID nulo
+        response_null = client.post(
+            "/predict/clustering",
+            json={
+                "documentos": [
+                    {"id": None, "texto": "Configuración de contenedores Docker en servidor Linux."},
+                    {"id": "doc-2", "texto": "Despliegue de aplicaciones React con TypeScript."}
+                ]
+            }
+        )
+        assert response_null.status_code == 422
+
+        # Caso ID con espacios en blanco
+        response_empty = client.post(
+            "/predict/clustering",
+            json={
+                "documentos": [
+                    {"id": "   ", "texto": "Configuración de contenedores Docker en servidor Linux."},
+                    {"id": "doc-2", "texto": "Despliegue de aplicaciones React con TypeScript."}
+                ]
+            }
+        )
+        assert response_empty.status_code == 422
+
+
+def test_clustering_missing_id_field_rejected():
+    """Valida que la ausencia del campo 'id' en los documentos sea rechazada con 422."""
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                {"texto": "Configuración de contenedores Docker en servidor Linux sin ID."},
+                {"texto": "Despliegue de aplicaciones React con TypeScript sin ID."}
+            ]
+        }
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 422
+
+
+def test_clustering_service_internal_boundary_validation():
+    """Valida que ClusteringService.clusterizar() exija documento_ids, valide cardinalidad y unicidad al invocarse directamente."""
+    docs = [
+        "Orquestación de microservicios con Docker y Kubernetes en clusters cloud.",
+        "Desarrollo de interfaces reactivas con React 19 y hooks useState."
+    ]
+    
+    # 1. documento_ids ausente o None
+    with pytest.raises(ValueError, match="documento_ids es obligatorio"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=None)
+        
+    # 2. Desajuste de cardinalidad entre documentos e IDs
+    with pytest.raises(ValueError, match="cardinalidad"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=["id-1"])
+        
+    # 3. IDs duplicados al invocar el servicio directamente
+    with pytest.raises(ValueError, match="únicos"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=["id-1", "id-1"])
+
+
+def test_clustering_deterministic_cluster_with_more_than_5_members():
+    """
+    Prueba determinista con un cluster de tamano > 5 (7 documentos de DevOps con textos idénticos e IDs únicos) y 2 de Frontend:
+    Verifica que:
+    1. documentos contiene exactamente la muestra máxima de 5.
+    2. documento_ids contiene todos los miembros (7).
+    3. Los textos idénticos con IDs distintos permanecen completamente diferenciados y preservados.
+    """
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                # 7 Documentos de DevOps con texto idéntico y IDs únicos
+                {"id": f"dev-{i}", "texto": "Orquestación de microservicios con Docker y Kubernetes en clusters cloud."}
+                for i in range(1, 8)
+            ] + [
+                # 2 Documentos de Frontend con texto idéntico y IDs únicos
+                {"id": "front-1", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState."},
+                {"id": "front-2", "texto": "Desarrollo de interfaces reactivas con React 19 y hooks useState."}
+            ],
+            "n_clusters": 2,
+            "algoritmo": "kmeans",
+            "idioma": "es"
+        }
+        
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["n_documentos"] == 9
+        assert len(data["clusters"]) == 2
+        
+        # Encontrar el cluster grande (DevOps con 7 documentos)
+        devops_cluster = next((c for c in data["clusters"] if c["tamano"] == 7), None)
+        assert devops_cluster is not None, f"Clusters devueltos: {data['clusters']}"
+        
+        # 1. documentos contiene exactamente la muestra máxima de 5
+        assert len(devops_cluster["documentos"]) == 5
+        
+        # 2. documento_ids contiene todos los miembros (7)
+        assert len(devops_cluster["documento_ids"]) == 7
+        assert devops_cluster["tamano"] == 7
+        
+        # 3. Textos idénticos con IDs distintos permanecen diferenciados
+        dev_ids_esperados = {f"dev-{i}" for i in range(1, 8)}
+        assert set(devops_cluster["documento_ids"]) == dev_ids_esperados
 
 
 def test_clustering_error_sanitization():
