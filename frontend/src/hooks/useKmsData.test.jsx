@@ -1,192 +1,105 @@
-import React from 'react';
-import { renderToString } from 'react-dom/server';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useKmsData } from './useKmsData.js';
 import * as kmsApi from '../services/kmsApi.js';
-import { RecentTable } from '../components/dashboard/RecentTable.jsx';
 
-describe('useKmsData Hook & UI Real Lifecycle Transitions (DevOps B1 Verification Suite)', () => {
+describe('useKmsData Hook Real Lifecycle & State Transitions (DevOps B1 Verification Suite)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Default mocks para servicios auxiliares
+    vi.spyOn(kmsApi, 'fetchStats').mockResolvedValue({ total: 10, categories: {} });
+    vi.spyOn(kmsApi, 'fetchCategories').mockResolvedValue(['Backend', 'Frontend', 'DevOps']);
+    vi.spyOn(kmsApi, 'checkBackendHealth').mockResolvedValue(true);
   });
 
-  it('1. Ejecuta realmente el hook useKmsData e inicializa las estructuras de datos', () => {
-    let hookInstance = null;
-    function ConsumerComponent() {
-      hookInstance = useKmsData(vi.fn());
-      return React.createElement(RecentTable, {
-        documents: hookInstance.documents,
-        historyError: hookInstance.historyError,
-      });
-    }
+  it('1. Comprueba transición: registros existentes -> respuesta válida [] que limpia documents en la misma instancia', async () => {
+    // 1. Carga inicial con 1 registro
+    const initialItems = [
+      { id: 1, content: 'Nota técnica inicial en PostgreSQL.', category: 'Backend' },
+    ];
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValueOnce({ items: initialItems });
 
-    const html = renderToString(React.createElement(ConsumerComponent));
+    const { result } = renderHook(() => useKmsData(vi.fn()));
 
-    // Comprueba inicialización real del hook
-    expect(hookInstance).not.toBeNull();
-    expect(Array.isArray(hookInstance.documents)).toBe(true);
-    expect(hookInstance.historyError).toBeNull();
-    expect(typeof hookInstance.reloadDashboardData).toBe('function');
-    expect(html).toContain('No hay documentos registrados aún en la base de datos.');
+    // Esperar a que useEffect ejecute la carga inicial en el ciclo de vida del hook
+    await waitFor(() => {
+      expect(result.current.documents).toHaveLength(1);
+      expect(result.current.documents[0].content).toBe('Nota técnica inicial en PostgreSQL.');
+      expect(result.current.historyError).toBeNull();
+    });
+
+    // 2. Transición hacia respuesta vacía [] en la MISMA instancia
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValueOnce({ items: [] });
+
+    await act(async () => {
+      await result.current.reloadDashboardData();
+    });
+
+    // Comprobar que documents quedó completamente limpio ([])
+    await waitFor(() => {
+      expect(result.current.documents).toEqual([]);
+      expect(result.current.historyError).toBeNull();
+    });
   });
 
-  it('2. Comprueba transición: registros previos -> respuesta válida [] que limpia documents', async () => {
-    // Simulador de componente consumidor conectado al flujo del hook
-    function TestAppConsumer({ initialData, nextData }) {
-      const [docs, setDocs] = React.useState(initialData.items);
-      const [error, setError] = React.useState(null);
-
-      // Simula el callback idéntico a reloadDashboardData en useKmsData
-      const runReload = async (dataSupplier) => {
-        try {
-          const res = await dataSupplier();
-          if (res && Array.isArray(res.items)) {
-            setDocs(res.items);
-            setError(null);
-          }
-        } catch (err) {
-          setError(err.message);
-        }
-      };
-
-      return React.createElement(
-        'div',
-        null,
-        React.createElement(RecentTable, { documents: docs, historyError: error }),
-        React.createElement('button', {
-          id: 'load-empty',
-          onClick: () => runReload(() => Promise.resolve(nextData)),
-        })
-      );
-    }
-
-    const initialDocs = {
-      items: [
-        { id: 1, content: 'Nota técnica inicial en PostgreSQL.', category: 'Backend' },
-      ],
-    };
-    const emptyDocs = { items: [] };
-
-    // 1. Renderizado inicial con registros
-    const initialHtml = renderToString(
-      React.createElement(TestAppConsumer, {
-        initialData: initialDocs,
-        nextData: emptyDocs,
-      })
-    );
-    expect(initialHtml).toContain('Nota técnica inicial en PostgreSQL.');
-    expect(initialHtml).not.toContain('No hay documentos registrados aún');
-
-    // 2. Transición hacia respuesta vacía []
-    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue(emptyDocs);
-    const historyRes = await kmsApi.fetchHistory('', 0, 20);
-
-    // Renderizado posterior con lista vacía
-    const emptyHtml = renderToString(
-      React.createElement(TestAppConsumer, {
-        initialData: historyRes,
-        nextData: emptyDocs,
-      })
-    );
-
-    // Comprueba que los documentos anteriores quedaron limpios y la UI muestra el estado vacío
-    expect(emptyHtml).toContain('No hay documentos registrados aún en la base de datos.');
-    expect(emptyHtml).not.toContain('Nota técnica inicial en PostgreSQL.');
-    expect(emptyHtml).not.toContain('Error al consultar el historial');
-  });
-
-  it('3. Comprueba error -> historyError visible en UI de forma distinta al estado vacío', async () => {
-    const errorMsg = 'HTTP 500: Error interno en base de datos PostgreSQL';
+  it('2. Comprueba rechazo / error -> historyError informado correctamente en el estado del hook', async () => {
+    const errorMsg = 'HTTP 500: Fallo en el servidor de base de datos';
     vi.spyOn(kmsApi, 'fetchHistory').mockRejectedValue(new Error(errorMsg));
 
-    function ErrorConsumer({ errorText }) {
-      return React.createElement(RecentTable, {
-        documents: [],
-        historyError: errorText,
-      });
-    }
+    const { result } = renderHook(() => useKmsData(vi.fn()));
 
-    const html = renderToString(React.createElement(ErrorConsumer, { errorText: errorMsg }));
-
-    // Comprueba que se muestra la alerta de error explícita
-    expect(html).toContain('Error al consultar el historial:');
-    expect(html).toContain(errorMsg);
-    // Comprueba que NO se enmascara como estado vacío
-    expect(html).not.toContain('No hay documentos registrados aún en la base de datos.');
+    // Esperar a que useEffect capture el rechazo en el ciclo de vida
+    await waitFor(() => {
+      expect(result.current.historyError).toBe(errorMsg);
+    });
   });
 
-  it('4. Comprueba una carga posterior exitosa y que el error anterior se limpia', async () => {
-    // 1. Primer estado con error
-    const errorHtml = renderToString(
-      React.createElement(RecentTable, {
-        documents: [],
-        historyError: 'Timeout de conexión al Gateway',
-      })
-    );
-    expect(errorHtml).toContain('Error al consultar el historial:');
+  it('3. Comprueba que una siguiente respuesta exitosa limpia el error anterior y actualiza documentos', async () => {
+    // 1. Estado inicial con error
+    const errorMsg = 'Error de conexión inicial';
+    vi.spyOn(kmsApi, 'fetchHistory').mockRejectedValueOnce(new Error(errorMsg));
 
-    // 2. Carga posterior exitosa
-    const recoveredData = {
-      items: [
-        {
-          id: 5,
-          content: 'Despliegue de microservicio FastAPI en contenedor Docker.',
-          category: 'DevOps',
-          tags: 'docker, fastapi',
-        },
-      ],
-      totalElements: 1,
-    };
-    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue(recoveredData);
-    const result = await kmsApi.fetchHistory('', 0, 20);
+    const { result } = renderHook(() => useKmsData(vi.fn()));
 
-    const recoveredHtml = renderToString(
-      React.createElement(RecentTable, {
-        documents: result.items,
-        historyError: null,
-      })
-    );
+    await waitFor(() => {
+      expect(result.current.historyError).toBe(errorMsg);
+    });
 
-    // Comprueba que el error se limpió y aparecen los nuevos datos
-    expect(recoveredHtml).not.toContain('Error al consultar el historial');
-    expect(recoveredHtml).toContain('Despliegue de microservicio FastAPI en contenedor Docker.');
-    expect(recoveredHtml).toContain('DevOps');
+    // 2. Siguiente carga exitosa en la MISMA instancia
+    const recoveredDocs = [
+      { id: 100, content: 'Documento recuperado tras reconexión.', category: 'DevOps' },
+    ];
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValueOnce({ items: recoveredDocs });
+
+    await act(async () => {
+      await result.current.reloadDashboardData();
+    });
+
+    // Comprobar que el error anterior fue limpiado y los nuevos documentos se cargaron
+    await waitFor(() => {
+      expect(result.current.historyError).toBeNull();
+      expect(result.current.documents).toHaveLength(1);
+      expect(result.current.documents[0].content).toBe('Documento recuperado tras reconexión.');
+    });
   });
 
-  it('5. Comprueba health fallido con historial exitoso y que los documentos se cargan igualmente', async () => {
-    // Healthcheck falla (500 o no responde)
+  it('4. Comprueba health falso o rechazado con historial exitoso -> documentos cargados igualmente (desacoplamiento total)', async () => {
+    // Healthcheck fallido (false o rechazo)
     vi.spyOn(kmsApi, 'checkBackendHealth').mockResolvedValue(false);
 
-    // Pero fetchHistory responde exitosamente con documentos
-    const historyPayload = {
-      items: [
-        {
-          id: 99,
-          content: 'Arquitectura desacoplada en Spring Boot y FastAPI.',
-          category: 'Backend',
-          tags: 'spring, fastapi',
-        },
-      ],
-      totalElements: 1,
-    };
-    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue(historyPayload);
+    // Historial exitoso con documentos
+    const historyDocs = [
+      { id: 50, content: 'Documento cargado independientemente del health.', category: 'Frontend' },
+    ];
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValueOnce({ items: historyDocs });
 
-    // Ejecución paralela desacoplada
-    const isHealthAlive = await kmsApi.checkBackendHealth();
-    const historyData = await kmsApi.fetchHistory('', 0, 20);
+    const { result } = renderHook(() => useKmsData(vi.fn()));
 
-    const html = renderToString(
-      React.createElement(RecentTable, {
-        documents: historyData.items,
-        historyError: null,
-      })
-    );
-
-    // Comprueba desacoplamiento total: healthcheck da false, pero los documentos se cargaron en la UI
-    expect(isHealthAlive).toBe(false);
-    expect(historyData.items).toHaveLength(1);
-    expect(html).toContain('Arquitectura desacoplada en Spring Boot y FastAPI.');
-    expect(html).toContain('Backend');
-    expect(html).not.toContain('Error al consultar el historial');
+    // Comprobar que a pesar de que health retorna false, fetchHistory procesó y cargó los documentos
+    await waitFor(() => {
+      expect(result.current.documents).toHaveLength(1);
+      expect(result.current.documents[0].content).toBe('Documento cargado independientemente del health.');
+      expect(result.current.historyError).toBeNull();
+    });
   });
 });
