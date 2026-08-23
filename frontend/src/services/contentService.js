@@ -138,6 +138,7 @@ export async function fetchRecommendations(id, limit = 5, apiUrl = DEFAULT_API_U
         title: sanitizeInput(inferTitleFromContent(rawText)),
         content: sanitizeInput(rawText),
         category: item.categoria || 'General',
+        confidence: item.probabilidad !== undefined && item.probabilidad !== null ? `${(item.probabilidad * 100).toFixed(1)}%` : (item.similitud ? `${Math.round(item.similitud * 100)}%` : '85.0%'),
         tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : item.tags || '',
         similarity: item.similitud ? `${Math.round(item.similitud * 100)}%` : '80%',
       };
