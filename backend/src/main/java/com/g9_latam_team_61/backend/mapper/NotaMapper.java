@@ -29,7 +29,8 @@ public class NotaMapper {
                 nota.getProbabilidad(),
                 copiarPalabrasClave(nota),
                 nota.getFechaAnalisis(),
-                nota.getTiempoProcesamientoMs()
+                nota.getTiempoProcesamientoMs(),
+                nota.getFeedbackUsuario()
         );
     }
 
@@ -41,7 +42,8 @@ public class NotaMapper {
                 nota.getProbabilidad(),
                 copiarPalabrasClave(nota),
                 nota.getFechaAnalisis(),
-                tiempoProcesamientoMs != null ? tiempoProcesamientoMs : nota.getTiempoProcesamientoMs()
+                tiempoProcesamientoMs != null ? tiempoProcesamientoMs : nota.getTiempoProcesamientoMs(),
+                nota.getFeedbackUsuario()
         );
     }
 
