@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
+import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
 from app.model_loader import loader
 from app.config import MODEL_FILE
+from app.clustering.service import clustering_service
 
 
 # 1. Prueba de Existencia y Carga del Modelo Canónico
@@ -317,6 +319,42 @@ def test_clustering_null_or_empty_id_rejected():
             }
         )
         assert response_empty.status_code == 422
+
+
+def test_clustering_missing_id_field_rejected():
+    """Valida que la ausencia del campo 'id' en los documentos sea rechazada con 422."""
+    with TestClient(app) as client:
+        payload = {
+            "documentos": [
+                {"texto": "Configuración de contenedores Docker en servidor Linux sin ID."},
+                {"texto": "Despliegue de aplicaciones React con TypeScript sin ID."}
+            ]
+        }
+        response = client.post(
+            "/predict/clustering",
+            json=payload
+        )
+        assert response.status_code == 422
+
+
+def test_clustering_service_internal_boundary_validation():
+    """Valida que ClusteringService.clusterizar() exija documento_ids, valide cardinalidad y unicidad al invocarse directamente."""
+    docs = [
+        "Orquestación de microservicios con Docker y Kubernetes en clusters cloud.",
+        "Desarrollo de interfaces reactivas con React 19 y hooks useState."
+    ]
+    
+    # 1. documento_ids ausente o None
+    with pytest.raises(ValueError, match="documento_ids es obligatorio"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=None)
+        
+    # 2. Desajuste de cardinalidad entre documentos e IDs
+    with pytest.raises(ValueError, match="cardinalidad"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=["id-1"])
+        
+    # 3. IDs duplicados al invocar el servicio directamente
+    with pytest.raises(ValueError, match="únicos"):
+        clustering_service.clusterizar(documentos=docs, documento_ids=["id-1", "id-1"])
 
 
 def test_clustering_deterministic_cluster_with_more_than_5_members():

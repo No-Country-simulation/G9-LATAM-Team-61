@@ -20,17 +20,26 @@ class ClusteringService:
     def clusterizar(
         self,
         documentos: List[str],
-        documento_ids: List[str] = None,
+        documento_ids: List[str],
         n_clusters: int = None,
         algoritmo: str = "kmeans",
         idioma: str = "es"
     ) -> Dict[str, Any]:
-        """Realiza el clustering de documentos de forma stateless y segura conservando IDs"""
+        """Realiza el clustering de documentos validando estricta cardinalidad y unicidad de IDs"""
         
         start_time = time.time()
         
-        if documento_ids is None:
-            documento_ids = [str(i) for i in range(len(documentos))]
+        # Validación de frontera interna del servicio (Bloqueante B2)
+        if documento_ids is None or not isinstance(documento_ids, list):
+            raise ValueError("El parámetro documento_ids es obligatorio y debe ser una lista.")
+        
+        if len(documentos) != len(documento_ids):
+            raise ValueError(
+                f"La cardinalidad de documentos ({len(documentos)}) y documento_ids ({len(documento_ids)}) debe coincidir exactamente."
+            )
+            
+        if len(documento_ids) != len(set(documento_ids)):
+            raise ValueError("Los elementos de documento_ids deben ser estrictamente únicos.")
         
         # 1. Instanciar preprocesador local por petición (Thread-Safe)
         preprocessor = ClusteringPreprocessor()
