@@ -139,6 +139,11 @@ export async function fetchRecommendations(id, limit = 5, apiUrl = DEFAULT_API_U
         content: sanitizeInput(rawText),
         category: item.categoria || 'General',
         tags: Array.isArray(item.palabrasClave) ? item.palabrasClave.join(', ') : item.tags || '',
+        confidence: item.probabilidad !== undefined
+          ? `${(item.probabilidad * 100).toFixed(1)}%`
+          : item.similitud !== undefined
+            ? `${(item.similitud * 100).toFixed(1)}%`
+            : '85.0%',
         similarity: item.similitud ? `${Math.round(item.similitud * 100)}%` : '80%',
       };
     });

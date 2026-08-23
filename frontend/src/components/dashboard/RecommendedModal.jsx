@@ -88,7 +88,7 @@ export function RecommendedModal({ isOpen, onClose, baseDocument, recommendation
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <Badge category={rec.category}>{rec.category}</Badge>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#05CD99' }}>
-                      Confianza: {rec.confidence}
+                      Confianza: {rec.confidence || rec.similarity || '85.0%'}
                     </span>
                   </div>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '4px 0', lineHeight: '1.4' }}>

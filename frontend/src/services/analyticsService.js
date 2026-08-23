@@ -19,7 +19,7 @@ export async function checkBackendHealth(apiUrl = DEFAULT_API_URL) {
 /**
  * Fetch Paginated History (GET /api/contenido)
  */
-export async function fetchHistory(categoryFilter = '', page = 0, size = 20, apiUrl = DEFAULT_API_URL) {
+export async function fetchHistory(categoryFilter = '', page = 0, size = 100, apiUrl = DEFAULT_API_URL) {
   if (IS_MOCK_MODE) {
     return getMockHistory(categoryFilter);
   }

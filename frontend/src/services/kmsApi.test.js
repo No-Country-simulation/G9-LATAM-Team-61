@@ -164,6 +164,21 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     expect(history.totalPages).toBe(1);
   });
 
+  it('5.1. fetchHistory debe solicitar 100 elementos por defecto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: [], totalElements: 0, totalPages: 0 }),
+    });
+
+    await fetchHistory('', 0, undefined, 'http://localhost:8080/api');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/contenido?page=0&size=100',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
   it('6. fetchHistory debe propagar el error ante fallo de red o HTTP sin enmascararlo como lista vacía', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network timeout failure'));
 
@@ -309,6 +324,34 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     );
     expect(recs).toHaveLength(1);
     expect(recs[0].category).toBe('Frontend');
+    expect(recs[0].confidence).toBe('90.0%');
+  });
+
+  it('14.1. fetchRecommendations prioriza probabilidad y conserva un fallback válido basado en similitud', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          id: 2,
+          contenidoOriginal: 'Documento recomendado con probabilidad explícita.',
+          categoria: 'Frontend',
+          probabilidad: 0.95,
+          similitud: 0.40,
+        },
+        {
+          id: 3,
+          contenidoOriginal: 'Documento recomendado únicamente por similitud.',
+          categoria: 'Frontend',
+          similitud: 0.82,
+        },
+      ],
+    });
+    global.fetch = mockFetch;
+
+    const recs = await fetchRecommendations(1, 5, 'http://localhost:8080/api');
+
+    expect(recs[0].confidence).toBe('95.0%');
+    expect(recs[1].confidence).toBe('82.0%');
   });
 
   it('15. triggerReclustering devuelve clusters simulados válidos solo en modo demo explícito', async () => {
