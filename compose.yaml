@@ -91,7 +91,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${FRONTEND_HTTP_PORT:?Define FRONTEND_HTTP_PORT in .env}:80"
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_HTTP_PORT:?Define FRONTEND_HTTP_PORT in .env}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --output-document=/dev/null http://127.0.0.1/health"]
       interval: 10s
