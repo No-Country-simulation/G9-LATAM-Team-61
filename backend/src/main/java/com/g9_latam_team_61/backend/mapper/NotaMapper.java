@@ -6,6 +6,8 @@ import com.g9_latam_team_61.backend.dto.NotaResponse;
 import com.g9_latam_team_61.backend.model.Nota;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class NotaMapper {
 
@@ -25,7 +27,7 @@ public class NotaMapper {
                 nota.getContenidoOriginal(),
                 nota.getCategoria(),
                 nota.getProbabilidad(),
-                nota.getPalabrasClave(),
+                copiarPalabrasClave(nota),
                 nota.getFechaAnalisis(),
                 nota.getTiempoProcesamientoMs()
         );
@@ -37,9 +39,13 @@ public class NotaMapper {
                 nota.getContenidoOriginal(),
                 nota.getCategoria(),
                 nota.getProbabilidad(),
-                nota.getPalabrasClave(),
+                copiarPalabrasClave(nota),
                 nota.getFechaAnalisis(),
                 tiempoProcesamientoMs != null ? tiempoProcesamientoMs : nota.getTiempoProcesamientoMs()
         );
+    }
+
+    private List<String> copiarPalabrasClave(Nota nota) {
+        return nota.getPalabrasClave() == null ? null : List.copyOf(nota.getPalabrasClave());
     }
 }

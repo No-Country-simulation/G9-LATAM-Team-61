@@ -12,7 +12,6 @@ import {
   INITIAL_DOCUMENTS,
   INITIAL_CLUSTERS,
 } from '../services/kmsApi';
-import { getMockClusters } from '../services/mockFallback';
 
 /**
  * Custom Hook for KMS Domain Data, Reactive Ingestion & State Handlers
@@ -168,23 +167,19 @@ export function useKmsData(showToast) {
       setIsReclustering(true);
       try {
         const result = await triggerReclustering();
-        setIsReclustering(false);
 
         if (result && result.clusters && result.clusters.length > 0) {
           setClusters(result.clusters);
         } else {
-          const fallback = getMockClusters();
-          setClusters(fallback.clusters);
+          throw new Error('El backend no devolvió clusters válidos');
         }
 
         showToast('Agrupamiento K-Means ejecutado correctamente', 'success');
         if (typeof openClustersModal === 'function') openClustersModal();
-      } catch {
+      } catch (err) {
+        showToast(err.message || 'Error al ejecutar el agrupamiento K-Means', 'error');
+      } finally {
         setIsReclustering(false);
-        const fallback = getMockClusters();
-        setClusters(fallback.clusters);
-        showToast('Agrupamiento K-Means generado (Modo local)', 'info');
-        if (typeof openClustersModal === 'function') openClustersModal();
       }
     },
     [showToast]

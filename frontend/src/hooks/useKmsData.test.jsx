@@ -102,4 +102,42 @@ describe('useKmsData Hook Real Lifecycle & State Transitions (DevOps B1 Verifica
       expect(result.current.historyError).toBeNull();
     });
   });
+
+  it('5. No sustituye un fallo real de clustering por datos simulados', async () => {
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue({ items: [] });
+    vi.spyOn(kmsApi, 'triggerReclustering').mockRejectedValue(new Error('Servicio de clustering no disponible'));
+    const showToast = vi.fn();
+    const openClustersModal = vi.fn();
+
+    const { result } = renderHook(() => useKmsData(showToast));
+
+    await act(async () => {
+      await result.current.handleRecluster(openClustersModal);
+    });
+
+    expect(result.current.clusters).toEqual([]);
+    expect(openClustersModal).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('Servicio de clustering no disponible', 'error');
+  });
+
+  it('6. No sustituye una respuesta real vacía de clustering por datos simulados', async () => {
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue({ items: [] });
+    vi.spyOn(kmsApi, 'triggerReclustering').mockResolvedValue({
+      n_clusters: 0,
+      n_documentos: 0,
+      clusters: [],
+    });
+    const showToast = vi.fn();
+    const openClustersModal = vi.fn();
+
+    const { result } = renderHook(() => useKmsData(showToast));
+
+    await act(async () => {
+      await result.current.handleRecluster(openClustersModal);
+    });
+
+    expect(result.current.clusters).toEqual([]);
+    expect(openClustersModal).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('El backend no devolvió clusters válidos', 'error');
+  });
 });
