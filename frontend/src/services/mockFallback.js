@@ -1,7 +1,28 @@
 /**
  * Local Demo Simulation Fallback (Pure client-side isolated inference)
  */
-import { sanitizeInput, inferTitleFromContent, INITIAL_DOCUMENTS, INITIAL_CLUSTERS } from './apiClient.js';
+import { sanitizeInput, inferTitleFromContent, INITIAL_DOCUMENTS } from './apiClient.js';
+
+const DEMO_CLUSTERS = [
+  {
+    id: 'demo-frontend',
+    title: '[DEMO] Desarrollo Frontend',
+    tags: 'react, vite, hooks',
+    docsCount: 2,
+    updated: 'Datos simulados',
+    docs: [],
+    isDemo: true,
+  },
+  {
+    id: 'demo-devops',
+    title: '[DEMO] DevOps e Infraestructura',
+    tags: 'docker, oci, ci-cd',
+    docsCount: 2,
+    updated: 'Datos simulados',
+    docs: [],
+    isDemo: true,
+  },
+];
 
 export async function runLocalClassificationSimulation(formData) {
   await new Promise((resolve) => setTimeout(resolve, 700));
@@ -61,9 +82,9 @@ export function getMockRecommendations(id) {
 
 export function getMockClusters() {
   return {
-    n_clusters: INITIAL_CLUSTERS.length,
-    n_documentos: 0,
-    clusters: INITIAL_CLUSTERS,
+    n_clusters: DEMO_CLUSTERS.length,
+    n_documentos: DEMO_CLUSTERS.reduce((total, cluster) => total + cluster.docsCount, 0),
+    clusters: DEMO_CLUSTERS.map((cluster) => ({ ...cluster })),
     tiempo_procesamiento_ms: 350.0,
   };
 }

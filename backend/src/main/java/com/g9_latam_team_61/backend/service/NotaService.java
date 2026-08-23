@@ -217,6 +217,7 @@ public class NotaService {
         return notaRepository.contarNotasPorCategoria();
     }
 
+    @Transactional(readOnly = true)
     public Page<NotaResponse> obtenerHistorial(String categoria, Pageable pageable) {
 
         validarPageable(pageable);

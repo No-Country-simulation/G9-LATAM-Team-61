@@ -13,6 +13,7 @@ import {
 describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification Suite)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('1. Debe enviar estrictamente { descripcion } al backend sin campo titulo y manejar 201 Created', async () => {
@@ -308,5 +309,24 @@ describe('KMS API Service Unit & Integration Tests (DevOps Contract Verification
     );
     expect(recs).toHaveLength(1);
     expect(recs[0].category).toBe('Frontend');
+  });
+
+  it('15. triggerReclustering devuelve clusters simulados válidos solo en modo demo explícito', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_ENABLE_DEMO', 'true');
+
+    try {
+      const { triggerReclustering: triggerDemoReclustering } = await import('./analyticsService.js');
+      const result = await triggerDemoReclustering();
+
+      expect(result.n_clusters).toBe(2);
+      expect(result.n_documentos).toBe(4);
+      expect(result.clusters).toHaveLength(2);
+      expect(result.clusters.every((cluster) => cluster.isDemo === true)).toBe(true);
+      expect(result.clusters.every((cluster) => cluster.title.startsWith('[DEMO]'))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });
