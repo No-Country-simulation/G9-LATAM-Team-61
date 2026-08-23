@@ -22,9 +22,6 @@ public class Nota {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 500)
-    private String titulo;
-
     @Column(name = "contenido_original", columnDefinition = "TEXT", nullable = false)
     private String contenidoOriginal;
 
@@ -44,10 +41,17 @@ public class Nota {
     @Column(name = "fecha_analisis")
     private LocalDateTime fechaAnalisis = LocalDateTime.now();
 
-//        Long tiempo_procesamiento_ms,
-//        List<Long> textos_similares,
-//        String version_modelo,
-//        String feedback_usuario
+    @Column(name = "tiempo_procesamiento_ms")
+    private Double tiempoProcesamientoMs;
+
+    @Column(name = "cluster_id")
+    private Integer clusterId;
+
+    @Column(name = "version_modelo", length = 50)
+    private String versionModelo;
+
+    @Column(name = "feedback_usuario", length = 100)
+    private String feedbackUsuario;
 
     @Override
     public boolean equals(Object o) {
@@ -61,5 +65,4 @@ public class Nota {
     public int hashCode() {
         return getClass().hashCode();
     }
-
 }

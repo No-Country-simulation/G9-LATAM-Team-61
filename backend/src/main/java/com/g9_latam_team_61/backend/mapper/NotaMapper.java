@@ -9,30 +9,37 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotaMapper {
 
-    public String construirContenido(NotaRequest request) {
-        return request.titulo() != null && !request.titulo().isBlank()
-                ? request.titulo() + ". " + request.descripcion()
-                : request.descripcion();
-    }
-
     public Nota toEntity(NotaRequest request, MlResult mlResult) {
         Nota nota = new Nota();
-        nota.setTitulo(request.titulo());
         nota.setContenidoOriginal(request.descripcion());
         nota.setCategoria(mlResult.categoria());
         nota.setProbabilidad(mlResult.probabilidad());
         nota.setPalabrasClave(mlResult.palabrasClave());
+        nota.setTiempoProcesamientoMs(mlResult.tiempoProcesamientoMs());
         return nota;
     }
 
     public NotaResponse toResponse(Nota nota) {
         return new NotaResponse(
                 nota.getId(),
-                nota.getTitulo(),
+                nota.getContenidoOriginal(),
                 nota.getCategoria(),
                 nota.getProbabilidad(),
                 nota.getPalabrasClave(),
-                nota.getFechaAnalisis()
+                nota.getFechaAnalisis(),
+                nota.getTiempoProcesamientoMs()
+        );
+    }
+
+    public NotaResponse toResponse(Nota nota, Double tiempoProcesamientoMs) {
+        return new NotaResponse(
+                nota.getId(),
+                nota.getContenidoOriginal(),
+                nota.getCategoria(),
+                nota.getProbabilidad(),
+                nota.getPalabrasClave(),
+                nota.getFechaAnalisis(),
+                tiempoProcesamientoMs != null ? tiempoProcesamientoMs : nota.getTiempoProcesamientoMs()
         );
     }
 }

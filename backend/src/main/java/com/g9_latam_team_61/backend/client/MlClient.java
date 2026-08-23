@@ -1,10 +1,13 @@
 package com.g9_latam_team_61.backend.client;
 
+import com.g9_latam_team_61.backend.model.Nota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -17,13 +20,16 @@ public class MlClient {
 
         try {
             response = fastApiClient.post()
-                    .uri("/analizar")
+                    .uri("/predict")
                     .body(new FastApiRequest(contenido))
                     .retrieve()
                     .body(FastApiResponse.class);
         } catch (ResourceAccessException ex) {
             throw new MlServiceTimeoutException("El servicio de análisis no respondió a tiempo");
         } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de inferencia: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
             throw new MlServiceException("El servicio de análisis devolvió un error: " + ex.getStatusCode());
         } catch (org.springframework.web.client.RestClientException ex) {
             throw new MlServiceException("Error de comunicación con el servicio de análisis");
@@ -31,9 +37,89 @@ public class MlClient {
 
         validarRespuesta(response);
 
-        java.util.List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : java.util.List.of();
+        List<String> palabrasClave = response.palabras_clave() != null ? response.palabras_clave() : List.of();
 
-        return new MlResult(response.categoria(), response.probabilidad(), palabrasClave);
+        return new MlResult(response.categoria(), response.probabilidad(), palabrasClave, response.tiempo_procesamiento_ms());
+    }
+
+    public List<FastApiResponse> analizarLote(List<String> textos) {
+        if (textos == null || textos.isEmpty()) {
+            throw new IllegalArgumentException("La lista de textos no puede ser nula ni vacía");
+        }
+
+        FastApiResponse[] responseArray;
+
+        try {
+            responseArray = fastApiClient.post()
+                    .uri("/predict/lote")
+                    .body(Map.of("textos", textos))
+                    .retrieve()
+                    .body(FastApiResponse[].class);
+        } catch (ResourceAccessException ex) {
+            throw new MlServiceTimeoutException("El servicio de análisis en lote no respondió a tiempo");
+        } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de inferencia por lote: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
+            throw new MlServiceException("El servicio de análisis devolvió un error: " + ex.getStatusCode());
+        } catch (org.springframework.web.client.RestClientException ex) {
+            throw new MlServiceException("Error de comunicación con el servicio de análisis en lote");
+        }
+
+        if (responseArray == null) {
+            throw new MlServiceException("FastAPI no devolvió respuesta para el análisis en lote");
+        }
+
+        if (responseArray.length != textos.size()) {
+            throw new MlServiceException("La respuesta del servicio de inferencia no coincide en cantidad con la solicitud (esperados: "
+                    + textos.size() + ", recibidos: " + responseArray.length + ")");
+        }
+
+        for (FastApiResponse res : responseArray) {
+            validarRespuesta(res);
+        }
+
+        return List.of(responseArray);
+    }
+
+    public FastApiClusteringResponse ejecutarClustering(List<Nota> notas, Integer nClusters) {
+        if (notas == null || notas.size() < 2) {
+            throw new IllegalArgumentException("Se necesitan al menos 2 documentos para realizar clustering");
+        }
+
+        List<FastApiDocumentoCluster> docs = notas.stream()
+                .map(n -> new FastApiDocumentoCluster(String.valueOf(n.getId()), n.getContenidoOriginal()))
+                .toList();
+
+        FastApiClusteringRequest request = new FastApiClusteringRequest(docs, nClusters, "kmeans", "es");
+
+        try {
+            return fastApiClient.post()
+                    .uri("/predict/clustering")
+                    .body(request)
+                    .retrieve()
+                    .body(FastApiClusteringResponse.class);
+        } catch (ResourceAccessException ex) {
+            throw new MlServiceTimeoutException("El servicio de clustering no respondió a tiempo");
+        } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().is4xxClientError()) {
+                throw new MlValidationException("Error de validación en servicio de clustering: " + ex.getStatusCode().value(), ex.getStatusCode());
+            }
+            throw new MlServiceException("El servicio de clustering devolvió un error: " + ex.getStatusCode());
+        } catch (org.springframework.web.client.RestClientException ex) {
+            throw new MlServiceException("Error de comunicación con el servicio de clustering");
+        }
+    }
+
+    public FastApiHealthResponse verificarSalud() {
+        try {
+            return fastApiClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .body(FastApiHealthResponse.class);
+        } catch (Exception ex) {
+            return new FastApiHealthResponse("down", false);
+        }
     }
 
     private void validarRespuesta(FastApiResponse response) {

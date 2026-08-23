@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: http://localhost:8080/api/contenido?page=0&size=10
+  url: http://localhost:8080/api/contenido?page=0&size=10&sort=fechaAnalisis,asc
   body: none
   auth: none
 }
@@ -13,6 +13,6 @@ get {
 params:query {
   page: 0
   size: 10
+  sort: fechaAnalisis,asc
   ~categoria: DevOps
-  ~sort: fechaAnalisis,desc
 }
