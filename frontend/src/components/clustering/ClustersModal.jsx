@@ -47,26 +47,23 @@ export function ClustersModal({ isOpen, onClose, clusters }) {
                 style={{
                   marginBottom: 0,
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
                 }}
               >
-                <div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '4px' }}>
-                    {cluster.title}
-                  </h4>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '2px 0' }}>
-                    <strong>{cluster.docsCount}</strong> {cluster.docsCount === 1 ? 'documento asignado' : 'documentos asignados'}
+                <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '4px', textAlign: 'center', width: '100%' }}>
+                  {cluster.title}
+                </h4>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '2px 0', textAlign: 'center' }}>
+                  <strong>{cluster.docsCount}</strong> {cluster.docsCount === 1 ? 'documento asignado' : 'documentos asignados'}
+                </p>
+                {cluster.tags && (
+                  <p style={{ color: 'var(--brand-primary)', fontSize: '0.75rem', margin: 0, fontWeight: 500, textAlign: 'center' }}>
+                    Tags: {cluster.tags}
                   </p>
-                  {cluster.tags && (
-                    <p style={{ color: 'var(--brand-primary)', fontSize: '0.75rem', margin: 0, fontWeight: 500 }}>
-                      Tags: {cluster.tags}
-                    </p>
-                  )}
-                </div>
-                <svg className="icon" viewBox="0 0 24 24" style={{ flexShrink: 0, color: 'var(--text-secondary)' }}>
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
+                )}
               </div>
             ))}
           </div>

@@ -49,21 +49,23 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
             <div
               key={cluster.id}
               className="cluster-folder"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+              }}
               tabIndex={0}
               role="button"
               onClick={onOpenClusters}
             >
-              <div>
-                <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '2px' }}>
-                  {cluster.title}
-                </h4>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                  {cluster.docsCount} {cluster.docsCount === 1 ? 'documento' : 'documentos'} {cluster.tags ? `• ${cluster.tags}` : ''}
-                </span>
-              </div>
-              <svg className="icon" viewBox="0 0 24 24">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              </svg>
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '4px', textAlign: 'center', width: '100%' }}>
+                {cluster.title}
+              </h4>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>
+                {cluster.docsCount} {cluster.docsCount === 1 ? 'documento' : 'documentos'} {cluster.tags ? `• ${cluster.tags}` : ''}
+              </span>
             </div>
           ))
         ) : (
@@ -78,6 +80,8 @@ export function ClusterWidget({ clusters, isReclustering, onRecluster, onOpenClu
             background: 'transparent',
             border: '1px dashed var(--border-color)',
             justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center',
             marginBottom: 0,
           }}
           tabIndex={0}

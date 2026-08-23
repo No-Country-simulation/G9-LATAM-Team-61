@@ -67,11 +67,7 @@ export function App() {
       <Toast toastState={toastState} onClose={closeToast} />
 
       <main className="main-content">
-        <Header
-          onOpenConfig={() => setActiveModal('config')}
-          onOpenApiDocs={() => setActiveModal('api')}
-          isApiLive={isApiLive}
-        />
+        <Header isApiLive={isApiLive} />
 
         {/* Fila 1: Formulario & Búsqueda Semántica */}
         <div className="top-grid">
