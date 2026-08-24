@@ -106,3 +106,32 @@ La ADR podrá pasar a estado `Aceptada` cuando:
 2. Data y Backend implementen y prueben el contrato base.
 3. Data y Backend completen errores, límites, healthcheck y versionado.
 4. DevOps documente la topología elegida para OCI.
+
+## Materialización actual del MVP — 2026-08-23
+
+Esta sección registra el resultado posterior sin reescribir las decisiones ni
+el estado histórico descritos arriba.
+
+El MVP fue integrado y desplegado con la siguiente materialización:
+
+- una única VM OCI `VM.Standard.A1.Flex`, ARM64/Ampere, con Ubuntu 24.04;
+- Docker Compose como orquestador de cuatro servicios;
+- Frontend React servido por Nginx como único entrypoint web público;
+- Spring Boot, FastAPI y PostgreSQL accesibles únicamente mediante redes Docker
+  internas;
+- PostgreSQL 16 contenedorizado y persistente mediante `postgres_data`;
+- Flyway V1/V2 como administrador del esquema y Hibernate en modo
+  `ddl-auto=validate`;
+- comunicación Spring Boot → FastAPI mediante los endpoints reales, incluido
+  el endpoint canónico `/predict`;
+- healthchecks y dependencias de arranque para los cuatro servicios;
+- despliegue manual desde `main`, seguido de validaciones funcionales y de
+  persistencia.
+
+La aplicación se encuentra temporalmente disponible mediante HTTP sobre la IP
+pública reservada `146.181.43.81`. Dominio, HTTPS/TLS y CI/CD automático no
+forman parte del estado desplegado actual.
+
+La topología materializada y su operación están documentadas en
+[`../architecture.md`](../architecture.md) y
+[`../deployment-oci.md`](../deployment-oci.md).
