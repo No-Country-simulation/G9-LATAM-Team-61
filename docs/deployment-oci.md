@@ -14,7 +14,9 @@
 | Capacidad | 1 OCPU, 6 GB RAM |
 | Sistema operativo | Ubuntu 24.04 |
 | IP pública | Reservada, `146.181.43.81` |
-| URL de demo | `http://146.181.43.81` |
+| Dominio | `techmind-kms.duckdns.org` |
+| URL principal con overlay HTTPS | `https://techmind-kms.duckdns.org` |
+| Certificados | Let's Encrypt administrado por Certbot en el host |
 
 El frontend/Nginx es el único entrypoint web. Backend, inference y PostgreSQL
 permanecen en redes internas de Docker.
@@ -27,7 +29,8 @@ permanecen en redes internas de Docker.
 - Docker Compose v2;
 - Buildx y soporte ARM64;
 - acceso de salida para obtener el repositorio, dependencias e imágenes;
-- TCP 22 y 80 permitidos conforme a las reglas de OCI y UFW;
+- TCP 22, 80 y 443 permitidos conforme a las reglas de OCI y UFW;
+- Certbot instalado en el host y certificado válido para el dominio;
 - espacio disponible suficiente para código, capas Docker y volumen de datos.
 
 La VM utiliza UFW, Fail2ban, `FORWARD DROP`, controles en `DOCKER-USER` e
@@ -60,12 +63,15 @@ Valores relevantes para OCI:
 ```dotenv
 FRONTEND_BIND_ADDRESS=0.0.0.0
 FRONTEND_HTTP_PORT=80
+FRONTEND_HTTPS_PORT=443
+LETSENCRYPT_PATH=/etc/letsencrypt
+ACME_WEBROOT_PATH=/var/lib/techmind/acme
 
 POSTGRES_DB=techmind
 POSTGRES_USER=techmind_app
 POSTGRES_PASSWORD=<CONTRASENA_FUERTE_NO_VERSIONADA>
 
-CORS_ALLOWED_ORIGINS=http://146.181.43.81
+CORS_ALLOWED_ORIGINS=http://techmind-kms.duckdns.org,https://techmind-kms.duckdns.org
 VITE_API_BASE_URL=/api
 VITE_ENABLE_DEMO=false
 ```
@@ -79,7 +85,14 @@ DB_URL=jdbc:postgresql://postgres:5432/<POSTGRES_DB>
 TRANSLATOR_BACKEND=none
 ```
 
-No incluyas en Git el `.env`, contraseñas, claves SSH, tokens ni otros secretos.
+Después del smoke HTTPS, el valor final de CORS debe reducirse a:
+
+```dotenv
+CORS_ALLOWED_ORIGINS=https://techmind-kms.duckdns.org
+```
+
+No incluyas en Git el `.env`, contraseñas, claves SSH, tokens, certificados ni
+claves privadas.
 
 ## Build en ARM64
 
@@ -103,8 +116,8 @@ Inicia los servicios respetando sus dependencias:
 docker compose up -d postgres
 docker compose up -d inference
 docker compose up -d backend
-docker compose up -d frontend
-docker compose ps
+docker compose -f compose.yaml -f compose.https.yaml up -d frontend
+docker compose -f compose.yaml -f compose.https.yaml ps
 ```
 
 El estado esperado es `healthy` para los cuatro servicios. Compose conserva el
@@ -144,7 +157,9 @@ Los healthchecks verifican:
 
 ### Validación pública
 
-Abre [http://146.181.43.81](http://146.181.43.81) y ejecuta un smoke test de:
+Con el overlay desplegado, abre
+[https://techmind-kms.duckdns.org](https://techmind-kms.duckdns.org) y ejecuta
+un smoke test de:
 
 - health;
 - clasificación;
@@ -187,7 +202,8 @@ este flujo:
 2. incorporar `origin/main` mediante fast-forward;
 3. revisar el delta;
 4. reconstruir únicamente las imágenes afectadas;
-5. recrear los servicios necesarios sin eliminar volúmenes;
+5. recrear los servicios necesarios sin eliminar volúmenes; para Frontend HTTPS
+   se utilizan `compose.yaml` y `compose.https.yaml`;
 6. esperar todos los healthchecks;
 7. ejecutar el smoke test público y validar persistencia.
 
@@ -195,10 +211,11 @@ No existe actualmente un pipeline CD que realice estos pasos.
 
 ## Rollback simple
 
-1. Retirar temporalmente la exposición deteniendo Frontend si existe un riesgo
-   público.
-2. Volver al commit previamente registrado y reconstruir las imágenes afectadas.
-3. Levantar los servicios sin la opción `-v`.
+1. Omitir `compose.https.yaml` y recrear exclusivamente Frontend con
+   `docker compose up -d frontend`.
+2. Confirmar nuevamente HTTP en el puerto 80.
+3. Si además se requiere volver de versión, usar el commit previamente
+   registrado y reconstruir únicamente las imágenes afectadas.
 4. Confirmar healthchecks y smoke test.
 5. Conservar `postgres_data`; para cambios de esquema futuros debe existir un
    respaldo verificable antes de migrar.
@@ -211,12 +228,62 @@ los logs, no recreando la base de manera destructiva.
 | Puerto | Uso actual | Exposición |
 |---|---|---|
 | 22/tcp | SSH por clave | Público |
-| 80/tcp | Nginx/React y proxy `/api` | Público |
-| 443/tcp | Preparado en OCI | Sin servicio HTTPS todavía |
+| 80/tcp | Health, ACME y redirección HTTPS | Público |
+| 443/tcp | Nginx/React y proxy `/api` con overlay | Público |
 | 8080/tcp | Spring Boot | Solo Docker |
 | 8000/tcp | FastAPI | Solo Docker |
 | 5432/tcp | PostgreSQL | Solo Docker |
 
-La futura fase de dominio y TLS deberá publicar HTTPS, redirigir HTTP y
-actualizar `CORS_ALLOWED_ORIGINS`. Hasta entonces la URL oficial temporal sigue
-siendo HTTP.
+## HTTPS y renovación de certificados
+
+El certificado de `techmind-kms.duckdns.org` fue emitido inicialmente con
+Certbot `standalone`. Para que las renovaciones no detengan Frontend, la
+autenticación debe cambiarse a `webroot` usando:
+
+```text
+/var/lib/techmind/acme
+```
+
+El overlay monta ese directorio en `/var/www/certbot`, donde Nginx sirve
+`/.well-known/acme-challenge/` por HTTP sin redirigirlo.
+
+Con la versión instalada de Certbot, revisa primero las opciones disponibles:
+
+```bash
+sudo certbot help reconfigure
+```
+
+La reconfiguración esperada es:
+
+```bash
+sudo certbot reconfigure \
+  --cert-name techmind-kms.duckdns.org \
+  --webroot \
+  --webroot-path /var/lib/techmind/acme \
+  --deploy-hook /usr/local/sbin/techmind-reload-nginx \
+  --run-deploy-hooks
+```
+
+El deploy hook debe ser propiedad de `root`, no contener secretos y ejecutar
+con rutas absolutas:
+
+```bash
+docker compose -f compose.yaml -f compose.https.yaml exec -T frontend nginx -t
+docker compose -f compose.yaml -f compose.https.yaml exec -T frontend nginx -s reload
+```
+
+El hook debe cambiar antes al directorio real del checkout. La recarga solo se
+ejecuta después de validar correctamente la configuración de Nginx.
+
+Comprueba la renovación y el timer instalado:
+
+```bash
+sudo certbot renew --dry-run --run-deploy-hooks
+systemctl list-timers | grep certbot
+```
+
+Los certificados permanecen en `/etc/letsencrypt` y se montan en Frontend como
+solo lectura. Nunca se copian al repositorio. El puerto 80 debe permanecer
+accesible para los desafíos HTTP-01.
+
+No se habilita HSTS en esta fase, para conservar un rollback sencillo a HTTP.

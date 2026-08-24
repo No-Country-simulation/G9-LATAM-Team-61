@@ -16,14 +16,15 @@ mantiene los servicios de aplicación y datos fuera de Internet.
 ```mermaid
 flowchart LR
     Internet([Internet])
+    Domain["techmind-kms.duckdns.org<br/>HTTPS :443"]
 
     subgraph OCI["OCI · sa-santiago-1 · compartment techmind"]
-        PublicIP["Reserved Public IP<br/>146.181.43.81<br/>HTTP :80"]
+        PublicIP["Reserved Public IP<br/>146.181.43.81<br/>HTTP :80 · HTTPS :443"]
         Network["Public subnet / VNIC<br/>IP privada 10.0.0.82"]
 
         subgraph VM["Ubuntu 24.04 · VM.Standard.A1.Flex<br/>ARM64 · 1 OCPU · 6 GB RAM"]
             subgraph Docker["Docker Engine + Docker Compose"]
-                Frontend["Frontend<br/>Nginx + React<br/>:80 público<br/>redes edge + app"]
+                Frontend["Frontend<br/>Nginx + React<br/>:80/:443 públicos<br/>redes edge + app"]
                 Backend["Spring Boot<br/>:8080 interno<br/>redes app + data"]
                 Inference["FastAPI + modelo<br/>:8000 interno<br/>red app"]
                 Postgres[("PostgreSQL 16<br/>:5432 interno<br/>red data")]
@@ -32,7 +33,8 @@ flowchart LR
         end
     end
 
-    Internet -->|"HTTP :80"| PublicIP
+    Internet --> Domain
+    Domain --> PublicIP
     PublicIP --> Network
     Network --> Frontend
     Frontend -->|"/api · Docker DNS backend"| Backend
@@ -56,14 +58,15 @@ esta topología.
 | Sistema operativo | Ubuntu 24.04 |
 | IP privada | `10.0.0.82` |
 | IP pública | Reservada, `146.181.43.81` |
+| Dominio | `techmind-kms.duckdns.org` |
 | Runtime | Docker Engine, Docker Compose y Buildx |
-| Acceso público de la aplicación | `http://146.181.43.81` |
+| Acceso principal con overlay HTTPS | `https://techmind-kms.duckdns.org` |
 
 ## Servicios y responsabilidades
 
 | Servicio | Responsabilidad | Exposición |
 |---|---|---|
-| Frontend/Nginx | Servir React y enviar `/api/` a Spring Boot | Host TCP 80 |
+| Frontend/Nginx | Servir React, TLS y enviar `/api/` a Spring Boot | Host TCP 80/443 con overlay |
 | Backend/Spring Boot | API, reglas de negocio, orquestación y persistencia | Solo Docker TCP 8080 |
 | Inference/FastAPI | Clasificación, batch y clustering mediante el modelo | Solo Docker TCP 8000 |
 | PostgreSQL 16 | Persistencia administrada por Backend | Solo Docker TCP 5432 |
@@ -108,9 +111,11 @@ inference healthy ┘
 
 ## Seguridad materializada
 
-- Puertos públicos actuales: SSH `22/tcp` y HTTP `80/tcp`.
-- `443/tcp` está preparado en la Security List, pero HTTPS aún no está
-  configurado.
+- Puertos públicos autorizados: SSH `22/tcp`, HTTP `80/tcp` y HTTPS `443/tcp`.
+- El certificado de `techmind-kms.duckdns.org` es administrado por Certbot en el
+  host y se monta en Frontend como solo lectura mediante `compose.https.yaml`.
+- HTTP conserva `/health` y el desafío ACME; el resto se redirige a HTTPS cuando
+  el overlay está activo.
 - UFW y Fail2ban están activos.
 - SSH usa clave; el acceso root y por contraseña está deshabilitado.
 - La política de forwarding es `DROP`.
@@ -142,5 +147,7 @@ El despliegue actual es manual. OCI no observa GitHub ni despliega cambios de
 `main` automáticamente. La actualización vigente consiste en sincronización
 controlada, build o recreación de los servicios afectados y smoke test.
 
-Dominio, HTTPS/TLS y CI/CD automático permanecen pendientes. La guía operativa
+El dominio y el soporte HTTPS se materializan mediante un overlay que conserva
+intacto el baseline HTTP local. La renovación usa Certbot en el host y webroot
+sin detener Frontend. CI/CD automático permanece pendiente. La guía operativa
 está en [`deployment-oci.md`](deployment-oci.md).
