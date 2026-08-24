@@ -193,16 +193,16 @@ export function useKmsData(showToast) {
         const response = await uploadBatchLote(textos);
         setIsProcessingBatch(false);
 
-        const count = response.archivos_procesados || response.totalProcesados || textos.length;
+        const count = response?.archivos_procesados || response?.archivosProcesados || response?.totalProcesados || textos.length;
         showToast(`Lote completado: ${count} documentos procesados`, 'success');
 
         if (typeof closeUploadModal === 'function') closeUploadModal();
         reloadDashboardData(selectedCategory);
-        return true;
+        return response;
       } catch (err) {
         setIsProcessingBatch(false);
         showToast(err.message || 'Error al procesar el lote', 'error');
-        return false;
+        return null;
       }
     },
     [selectedCategory, reloadDashboardData, showToast]

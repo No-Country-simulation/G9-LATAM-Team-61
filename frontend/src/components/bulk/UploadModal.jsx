@@ -65,9 +65,26 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
 
   const handleSubmitBatch = async () => {
     if (parsedTexts.length === 0) return;
+    const startTime = performance.now();
     const summary = await onProcessBatch(parsedTexts);
-    if (summary) {
-      setBatchSummary(summary);
+    const clientElapsed = Math.round(performance.now() - startTime);
+
+    if (summary && typeof summary === 'object') {
+      const tiempoTotal = summary.tiempo_total_ms ?? summary.tiempoTotalMs ?? clientElapsed;
+      const tiempoPromedio = summary.tiempo_promedio_por_texto_ms ?? summary.tiempoPromedioPorTextoMs ?? Number((tiempoTotal / parsedTexts.length).toFixed(1));
+
+      setBatchSummary({
+        ...summary,
+        archivos_procesados: summary.archivos_procesados ?? summary.archivosProcesados ?? summary.totalProcesados ?? parsedTexts.length,
+        tiempo_total_ms: tiempoTotal,
+        tiempo_promedio_por_texto_ms: tiempoPromedio,
+      });
+    } else if (summary) {
+      setBatchSummary({
+        archivos_procesados: parsedTexts.length,
+        tiempo_total_ms: clientElapsed,
+        tiempo_promedio_por_texto_ms: Number((clientElapsed / parsedTexts.length).toFixed(1)),
+      });
     }
   };
 
@@ -207,13 +224,13 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
               <div style={{ background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TIEMPO TOTAL</span>
                 <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#0EA5E9', margin: '4px 0 0' }}>
-                  {batchSummary.tiempo_total_ms ? `${batchSummary.tiempo_total_ms} ms` : '—'}
+                  {batchSummary.tiempo_total_ms != null ? `${Number(batchSummary.tiempo_total_ms).toFixed(1)} ms` : '—'}
                 </p>
               </div>
               <div style={{ background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PROMEDIO POR NOTA</span>
                 <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#05CD99', margin: '4px 0 0' }}>
-                  {batchSummary.tiempo_promedio_por_texto_ms ? `${batchSummary.tiempo_promedio_por_texto_ms} ms` : '—'}
+                  {batchSummary.tiempo_promedio_por_texto_ms != null ? `${Number(batchSummary.tiempo_promedio_por_texto_ms).toFixed(1)} ms` : '—'}
                 </p>
               </div>
             </div>
