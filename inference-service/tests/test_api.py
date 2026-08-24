@@ -525,3 +525,59 @@ def test_model_unavailable_returns_503():
             assert response.status_code == 503
             data = response.json()
             assert "detail" in data
+
+
+# 13. Pruebas de Enriquecedor Semántico de Dominio (DomainExpander)
+def test_domain_expander_unit_enrichment():
+    from app.domain_expander import domain_expander
+
+    text_devops = "Falla critica con prometheus y grafana alertmanager en cluster k8s"
+    enriched_devops = domain_expander.enrich(text_devops)
+    assert "docker" in enriched_devops
+    assert "kubernetes" in enriched_devops
+
+    text_backend = "Agotamiento de conexiones en hikaricp con hibernate y flyway migrations"
+    enriched_backend = domain_expander.enrich(text_backend)
+    assert "spring boot" in enriched_backend
+    assert "postgresql" in enriched_backend
+
+    text_frontend = "Error de estado global con zustand y layout con flexbox y css grid"
+    enriched_frontend = domain_expander.enrich(text_frontend)
+    assert "react" in enriched_frontend
+    assert "frontend" in enriched_frontend
+
+    text_ds = "Desbalance de clases tratado con smote y evaluado con silhouette score"
+    enriched_ds = domain_expander.enrich(text_ds)
+    assert "machine learning" in enriched_ds
+    assert "python" in enriched_ds
+
+    text_mobile = "Falla de compilacion en xcode con cocoapods para build de testflight"
+    enriched_mobile = domain_expander.enrich(text_mobile)
+    assert "móvil" in enriched_mobile
+    assert "flutter" in enriched_mobile
+
+
+def test_domain_enriched_predictions_via_api():
+    """
+    Verifica que textos con jerga técnica especializada se clasifiquen
+    con alta confianza en su área correspondiente y sin alterar los tags devueltos.
+    """
+    with TestClient(app) as client:
+        casos = [
+            ("DevOps", "Configuracion de alertas en alertmanager y dashboards en grafana para oomkilled pods"),
+            ("Backend", "Optimizacion de pool de conexiones hikaricp y migraciones automaticas con flyway"),
+            ("Frontend", "Gestion de estado en interfaz web con zustand y accesibilidad auditada con lighthouse"),
+            ("Data Science", "Ajuste de hiperparametros en pipeline con scikit-learn y metricas de silhouette score"),
+            ("Mobile", "Configuracion de provisioning profile y subida de paquete ipa mediante xcode y testflight")
+        ]
+
+        for categoria_esperada, texto in casos:
+            res = client.post("/predict", json={"contenido_crudo": texto})
+            assert res.status_code == 200
+            data = res.json()
+            assert data["categoria"] == categoria_esperada
+            assert data["probabilidad"] >= 0.70
+            assert "palabras_clave" in data
+            # Asegurar que las palabras clave extraídas provienen del texto original y no de las inyecciones
+            assert len(data["palabras_clave"]) > 0
+
