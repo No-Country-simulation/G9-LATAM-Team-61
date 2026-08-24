@@ -14,18 +14,20 @@ búsqueda, recomendaciones, estadísticas y clustering.
 
 ## Demo actual
 
-La demostración pública temporal está disponible por HTTP en:
+El dominio público es:
 
-**[http://146.181.43.81](http://146.181.43.81)**
+**[https://techmind-kms.duckdns.org](https://techmind-kms.duckdns.org)**
 
-La IP es reservada. Todavía no se han configurado dominio ni HTTPS/TLS, por lo
-que no debe utilizarse esta instancia para enviar información sensible.
+La IP asociada `146.181.43.81` es reservada. HTTPS se activa en OCI mediante el
+overlay `compose.https.yaml`; hasta completar ese despliegue, el endpoint HTTP
+existente continúa disponible en
+[http://techmind-kms.duckdns.org](http://techmind-kms.duckdns.org).
 
 ## Arquitectura resumida
 
 ```text
 Internet
-  → Frontend React servido por Nginx :80 (único entrypoint web)
+  → Frontend React servido por Nginx :80/:443 (único entrypoint web)
       → Spring Boot :8080 (interno)
           → FastAPI/modelo :8000 (interno)
           → PostgreSQL 16 :5432 (interno y persistente)
@@ -103,6 +105,11 @@ El despliegue es **manual**. OCI no monitoriza GitHub ni actualiza la aplicació
 automáticamente. Cuando `main` cambia se realiza una actualización controlada,
 se reconstruyen o recrean únicamente los servicios afectados y se ejecuta un
 smoke test. CI/CD automático queda fuera del MVP desplegado actualmente.
+
+La ejecución local conserva HTTP mediante `compose.yaml`. OCI añade HTTPS sin
+alterar esa baseline mediante `compose.https.yaml`; Certbot se ejecuta en el host
+y los certificados permanecen fuera de Git. Consulta el procedimiento y el
+rollback en [`docs/deployment-oci.md`](docs/deployment-oci.md).
 
 ## Desarrollo
 
