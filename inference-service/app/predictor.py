@@ -6,6 +6,7 @@ from app.model_loader import loader
 from app.config import TRANSLATOR_BACKEND, TRANSLATE_TARGET_LANG, KEYWORDS_TOP_N
 from app.translator import TranslatorService
 from app.keywords import extract_keywords
+from app.domain_expander import domain_expander
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,10 @@ class Predictor:
         Realiza una inferencia sobre el texto técnico prevalidado:
         1. Sanitiza texto estructuralmente.
         2. Traduce texto ES -> EN mediante TranslatorService si está habilitado.
-        3. Ejecuta predicción sobre el Pipeline scikit-learn.
-        4. Calcula probabilidad de confianza y extrae palabras clave.
-        5. Registra el tiempo exacto de procesamiento (tiempo_procesamiento_ms).
+        3. Enriquece semánticamente con DomainExpander para alta precisión.
+        4. Ejecuta predicción sobre el Pipeline scikit-learn.
+        5. Calcula probabilidad de confianza y extrae palabras clave del texto original.
+        6. Registra el tiempo exacto de procesamiento (tiempo_procesamiento_ms).
         """
         start_time = time.time()
 
@@ -41,8 +43,9 @@ class Predictor:
         clean_text = limpiar_texto_unitario(text)
 
         try:
-            # 1. Traducir texto si aplica
-            text_for_model = self.translator.translate(clean_text)
+            # 1. Traducir texto si aplica y enriquecer contexto semántico de dominio
+            translated_text = self.translator.translate(clean_text)
+            text_for_model = domain_expander.enrich(translated_text)
 
             # 2. Inferencia sobre el modelo scikit-learn
             predictions = loader.model.predict([text_for_model])
