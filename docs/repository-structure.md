@@ -1,12 +1,12 @@
 # Estructura del monorepo
 
-> Estado: baseline para validación. Su fusión establecerá la estructura vigente.
+> Estado vigente al 25 de agosto de 2026: monorepo integrado y desplegado.
 
 ## Objetivo
 
-Establecer límites claros entre los componentes de TechMind antes de integrar
-el primer servicio, sin modificar la planificación por sprints ni convertir
-decisiones pendientes de Data o DevOps en acuerdos definitivos.
+Mantener límites claros entre los componentes integrados de TechMind y ubicar
+el código, contratos, documentación e infraestructura reproducible en una única
+estructura pública sin mezclar secretos ni documentación privada.
 
 ## Estructura
 
@@ -67,63 +67,40 @@ decisiones pendientes de Data o DevOps en acuerdos definitivos.
 
 - Un Compose dentro de un componente puede levantar dependencias para su
   desarrollo aislado.
-- El futuro Compose de la raíz será la definición para ejecutar la plataforma
-  integrada.
-- La definición raíz no se añadirá hasta contar con los servicios y Dockerfiles
-  necesarios; así se evita publicar una configuración que no pueda validarse.
-- Los puertos y credenciales locales deberán configurarse mediante variables,
-  no mediante secretos confirmados en Git.
+- `compose.yaml` es la baseline integrada de Frontend, Backend, inference y
+  PostgreSQL.
+- `compose.https.yaml` añade el overlay HTTPS utilizado en OCI sin reemplazar la
+  baseline local.
+- Los puertos y credenciales se configuran mediante variables; los secretos
+  reales permanecen fuera de Git.
 
 ## Infraestructura y despliegue
 
 - `infra/` concentra la infraestructura y la automatización de despliegue.
-- OCI es el proveedor objetivo del proyecto.
-- La topología, región, servicios y recursos todavía no están definidos.
-- Terraform es una opción prevista, pero aún no una decisión aprobada.
+- OCI es el proveedor desplegado del MVP en `sa-santiago-1`.
+- La topología vigente utiliza una VM ARM64/Ampere y Docker Compose; está
+  detallada en `architecture.md` y `deployment-oci.md`.
+- Terraform continúa como opción futura y no está aplicado.
 - No se versionan credenciales, claves, archivos de estado ni secretos.
 - `infra/terraform/` se creará únicamente cuando el equipo apruebe el uso de
   Terraform y exista una configuración que pueda validarse.
 
 ## Datos y modelos
 
-- No se versionan datasets completos, datos procesados ni modelos generados.
+- No se versionan datasets completos ni artefactos generados arbitrarios. El
+  modelo canónico aprobado constituye la excepción explícita y vive únicamente
+  en `inference-service/model/modelo_hacka.pkl`.
 - Solo podrán incluirse muestras pequeñas, anonimizadas y compatibles con su
   licencia cuando el equipo las apruebe.
 - Cada fuente de datos y artefacto deberá documentar procedencia, licencia y
   versión.
 
-## Integración de trabajos existentes
+## Integración y operación actuales
 
-- El proyecto Spring Boot existente se conservará en `backend/`; este baseline
-  no crea ni mueve su código.
-- Después de fusionar esta estructura, cualquier rama de servicio abierta deberá
-  actualizarse desde `main` antes de completar su revisión.
-- Los documentos y contratos en revisión se integrarán en `docs/` y
-  `contracts/` sin bloquear la creación de las demás carpetas.
-
-## Decisiones que este baseline no toma
-
-- Idioma, dataset o taxonomía del modelo.
-- Contrato definitivo Spring Boot–FastAPI.
-- Persistencia funcional definitiva.
-- Topología final, región o servicios de OCI.
-- Adopción definitiva de Terraform.
-- Contenido del Compose integrado.
-- Herramientas y reglas definitivas de CI/CD.
-
-## Elementos pendientes
-
-- `infra/terraform/`.
-- `compose.yaml` en la raíz.
-- `.env.example` en la raíz.
-- `.github/workflows/`.
-- Subdirectorios internos de `data-science/`.
-- Reorganización adicional de `contracts/`.
-
-## Criterios para aprobar la estructura
-
-- El Tech Lead confirma los nombres y límites de las carpetas.
-- Backend confirma que su proyecto permanecerá en `backend/`.
-- Data confirma la separación entre `data-science/` e `inference-service/`.
-- DevOps confirma que `infra/` permite preparar OCI, Compose y CI/CD sin
-  introducir secretos ni dependencias circulares.
+- Frontend consume exclusivamente Spring Boot mediante `/api`.
+- Spring Boot usa FastAPI mediante `/predict`, `/predict/lote` y
+  `/predict/clustering`, y administra PostgreSQL con Flyway.
+- Los workflows existentes proporcionan CI por componente. El despliegue hacia
+  OCI continúa siendo manual; no existe CD automático.
+- Terraform, autenticación pública y rate limiting permanecen fuera del alcance
+  materializado del MVP.

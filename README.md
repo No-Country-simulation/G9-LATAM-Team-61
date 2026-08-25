@@ -18,10 +18,16 @@ El dominio público es:
 
 **[https://techmind-kms.duckdns.org](https://techmind-kms.duckdns.org)**
 
-La IP asociada `146.181.43.81` es reservada. HTTPS se activa en OCI mediante el
-overlay `compose.https.yaml`; hasta completar ese despliegue, el endpoint HTTP
-existente continúa disponible en
-[http://techmind-kms.duckdns.org](http://techmind-kms.duckdns.org).
+La IP asociada `146.181.43.81` es reservada. HTTPS está activo en OCI mediante el
+overlay `compose.https.yaml`; HTTP permanece disponible únicamente para health,
+el desafío ACME y la redirección permanente hacia HTTPS.
+
+La documentación OpenAPI de FastAPI se publica, sin exponer su puerto interno,
+en:
+
+- [Swagger UI](https://techmind-kms.duckdns.org/inference/docs);
+- [ReDoc](https://techmind-kms.duckdns.org/inference/redoc);
+- [OpenAPI JSON](https://techmind-kms.duckdns.org/inference/openapi.json).
 
 ## Arquitectura resumida
 
@@ -101,10 +107,13 @@ docker compose down
 El MVP se ejecuta en una única VM OCI `VM.Standard.A1.Flex`, con Ubuntu 24.04,
 1 OCPU y 6 GB de RAM, en `sa-santiago-1`.
 
-El despliegue es **manual**. OCI no monitoriza GitHub ni actualiza la aplicación
-automáticamente. Cuando `main` cambia se realiza una actualización controlada,
-se reconstruyen o recrean únicamente los servicios afectados y se ejecuta un
-smoke test. CI/CD automático queda fuera del MVP desplegado actualmente.
+El repositorio dispone de integración continua: Backend ejecuta su suite Maven,
+Frontend ejecuta lint, tests, build y auditoría de dependencias, e inference
+valida sus tests, el modelo y el build Docker. El despliegue es **manual**: OCI
+no monitoriza GitHub ni actualiza la aplicación automáticamente. Cuando `main`
+cambia se realiza una actualización controlada, se reconstruyen o recrean
+únicamente los servicios afectados y se ejecuta un smoke test. No existe CD
+automático en el MVP desplegado actualmente.
 
 La ejecución local conserva HTTP mediante `compose.yaml`. OCI añade HTTPS sin
 alterar esa baseline mediante `compose.https.yaml`; Certbot se ejecuta en el host

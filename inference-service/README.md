@@ -1,7 +1,7 @@
 # KMS Inference Service API
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.116-green?logo=fastapi)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.140.13-green?logo=fastapi)
 ![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-orange?logo=scikit-learn)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
@@ -37,6 +37,15 @@ Microservicio canónico desarrollado con **FastAPI** para realizar inferencias s
 
 > **Política de Compatibilidad y Criterio de Retiro Legacy:**
 > El endpoint `POST /analizar` y los campos de entrada `text` y `descripcion` se mantienen temporalmente marcados como `deprecated=True` exclusivamente para permitir la transición sin fricción de clientes antiguos. Quedarán programados para su retiro definitivo en la versión `v2.0` del microservicio una vez que todos los consumidores migren al contrato canónico `POST /predict` con `contenido_crudo`.
+
+### DomainExpander V2
+
+Antes de la inferencia se aplica una etapa conservadora de enriquecimiento
+semántico de dominio para reforzar terminología técnica poco representada en el
+dataset. La lógica utiliza evidencia ponderada, umbrales y desambiguación antes
+de añadir, como máximo, una única señal de dominio. Esta señal se utiliza solo
+como entrada del modelo: no se incorpora a `palabras_clave`, no modifica
+`modelo_hacka.pkl` y no implica una mejora garantizada para todas las entradas.
 
 ---
 
@@ -121,5 +130,5 @@ Construir y levantar el contenedor:
 
 ```bash
 docker build -t inference-service:latest .
-docker run -d -p 8000:8000 --name stackpulse-fastapi inference-service:latest
+docker run -d -p 8000:8000 --name techmind-inference inference-service:latest
 ```

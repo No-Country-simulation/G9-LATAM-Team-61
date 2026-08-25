@@ -65,7 +65,7 @@ export function AnalyticsSearch({
           <line x1="12" y1="20" x2="12" y2="4"></line>
           <line x1="6" y1="20" x2="6" y2="14"></line>
         </svg>
-        Analítica y Búsqueda Semántica
+        Analítica y Búsqueda por Contenido y Palabras Clave
       </h2>
 
       {/* Global Search Container */}
@@ -83,7 +83,7 @@ export function AnalyticsSearch({
         <input
           id="global-search"
           type="text"
-          placeholder="Buscar en conocimiento por similitud semántica (ej: docker, spring, react)..."
+          placeholder="Buscar por contenido o palabras clave (ej: docker, spring, react)..."
           className="form-control search-input"
           aria-label="Búsqueda global"
           value={localQuery}
@@ -163,7 +163,7 @@ export function AnalyticsSearch({
           </div>
         </Card>
         <Card className="stat-card">
-          <h3>Precisión Media</h3>
+          <h3>Confianza Media</h3>
           <div className="value" style={{ color: '#05CD99' }}>
             {precisionText}
           </div>
@@ -175,7 +175,7 @@ export function AnalyticsSearch({
           </div>
         </Card>
         <Card className="stat-card">
-          <h3>Clusters IA</h3>
+          <h3>Clusters K-Means</h3>
           <div className="value" style={{ color: 'var(--brand-primary)' }}>
             {clustersCount} {clustersCount === 1 ? 'Grupo' : 'Grupos'}
           </div>

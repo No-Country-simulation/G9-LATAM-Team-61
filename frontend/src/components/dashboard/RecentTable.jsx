@@ -57,7 +57,7 @@ export function RecentTable({
             <tr>
               <th style={{ textAlign: 'left', padding: '0.75rem 1rem' }}>EXTRACTO / CONTENIDO</th>
               <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem', width: '110px' }}>CATEGORÍA</th>
-              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem' }}>TAGS (TF-IDF)</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 0.8rem' }}>PALABRAS CLAVE EXTRAÍDAS</th>
               <th style={{ textAlign: 'right', padding: '0.75rem 1rem', width: '140px' }}>ACCIÓN</th>
             </tr>
           </thead>

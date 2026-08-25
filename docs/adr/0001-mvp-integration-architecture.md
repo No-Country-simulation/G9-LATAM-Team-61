@@ -1,9 +1,14 @@
 # ADR-0001: Arquitectura de integración y estado de los contratos
 
-- Estado: Aceptada parcialmente
+- Estado: Superada por la materialización del MVP; conservada como registro histórico
 - Fecha inicial: 2026-07-22
-- Última actualización: 2026-07-28
+- Última actualización: 2026-08-25
 - Responsables de decisión: Tech Lead y áreas involucradas en cada contrato
+
+> Las secciones fechadas en julio documentan decisiones y estados temporales de
+> aquella etapa. No describen el runtime vigente. La sección “Materialización
+> actual del MVP” registra qué propuestas fueron confirmadas, reemplazadas o
+> completadas posteriormente.
 
 ## Contexto
 
@@ -14,7 +19,7 @@ como definitivas las decisiones operativas que todavía no se han cerrado.
 La planificación por sprints definida por el Tech Lead continúa vigente. Esta
 ADR no sustituye esa planificación ni cambia el alcance asignado a cada área.
 
-## Decisiones confirmadas
+## Decisiones confirmadas en la etapa inicial
 
 - La arquitectura general mantiene el flujo React → Spring Boot →
   FastAPI/modelo, PostgreSQL para persistencia y despliegue en OCI.
@@ -28,10 +33,10 @@ ADR no sustituye esa planificación ni cambia el alcance asignado a cada área.
   Frontend.
 - El trabajo se integra mediante ramas cortas y pull requests revisados.
 
-## Estado temporal aceptado
+## Estado temporal aceptado en la etapa inicial
 
-Durante la etapa actual, Spring Boot invoca un mock en `POST /analizar` y envía
-`contenido_crudo`. Este mock permite que Backend continúe con los DTOs, la
+Durante aquella etapa, Spring Boot invocaba un mock en `POST /analizar` y enviaba
+`contenido_crudo`. Este mock permitía que Backend continuara con los DTOs, la
 orquestación y la persistencia antes de disponer del FastAPI real.
 
 El mock:
@@ -52,7 +57,7 @@ El archivo `contracts/inference-api.yaml` registra este baseline. Data debe
 implementarlo y Backend debe consumirlo. Un cambio incompatible requiere acuerdo
 explícito y actualización del contrato.
 
-No están aprobados aún:
+En el momento de esta decisión todavía no estaban aprobados:
 
 - la taxonomía y los límites de campos;
 - errores, healthcheck y timeouts;
@@ -60,7 +65,7 @@ No están aprobados aún:
 - versión del modelo en la respuesta;
 - procesamiento por lotes dentro de este contrato.
 
-## Recomendaciones DevOps pendientes
+## Recomendaciones DevOps pendientes en la etapa inicial
 
 DevOps puede avanzar con preflight, seguridad y opciones de despliegue en OCI,
 pero la topología concreta se documentará como una decisión separada. Por ahora
@@ -98,7 +103,7 @@ la distribución de trabajo vigente.
 Tampoco se decide reducir el alcance de los sprints: cualquier ajuste de
 prioridad corresponde al Tech Lead y al equipo.
 
-## Criterio para completar esta ADR
+## Criterio histórico para completar esta ADR
 
 La ADR podrá pasar a estado `Aceptada` cuando:
 
@@ -107,7 +112,7 @@ La ADR podrá pasar a estado `Aceptada` cuando:
 3. Data y Backend completen errores, límites, healthcheck y versionado.
 4. DevOps documente la topología elegida para OCI.
 
-## Materialización actual del MVP — 2026-08-23
+## Materialización actual del MVP — actualización 2026-08-25
 
 Esta sección registra el resultado posterior sin reescribir las decisiones ni
 el estado histórico descritos arriba.
@@ -124,13 +129,22 @@ El MVP fue integrado y desplegado con la siguiente materialización:
   `ddl-auto=validate`;
 - comunicación Spring Boot → FastAPI mediante los endpoints reales, incluido
   el endpoint canónico `/predict`;
+- contrato Frontend → Spring Boot mediante `POST /api/contenido` con
+  `descripcion` entre 30 y 5000 caracteres; la propuesta histórica de `titulo`
+  fue reemplazada y el campo no forma parte del contrato vigente;
+- límites, errores, healthchecks y procesamiento por lotes materializados en el
+  runtime, aunque `contracts/inference-api.yaml` conserva deliberadamente un
+  alcance parcial centrado en `/predict`;
+- enriquecimiento conservador DomainExpander V2 antes de la inferencia, sin
+  modificar el modelo ni las palabras clave devueltas;
 - healthchecks y dependencias de arranque para los cuatro servicios;
 - despliegue manual desde `main`, seguido de validaciones funcionales y de
   persistencia.
 
-La aplicación se encuentra temporalmente disponible mediante HTTP sobre la IP
-pública reservada `146.181.43.81`. Dominio, HTTPS/TLS y CI/CD automático no
-forman parte del estado desplegado actual.
+La aplicación está disponible en `https://techmind-kms.duckdns.org`, con
+certificados Let's Encrypt y redirección HTTP → HTTPS. Existen workflows de CI
+para Backend, Frontend e inference. No existe CD automático: la actualización
+de OCI continúa siendo manual.
 
 La topología materializada y su operación están documentadas en
 [`../architecture.md`](../architecture.md) y

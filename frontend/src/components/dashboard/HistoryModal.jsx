@@ -109,7 +109,7 @@ export function HistoryModal({
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem' }}>EXTRACTO / CONTENIDO</th>
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '130px' }}>CATEGORÍA</th>
                 <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '90px' }}>FECHA</th>
-                <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '160px' }}>TAGS (TF-IDF)</th>
+                <th style={{ textAlign: 'left', padding: '0.8rem 1rem', width: '160px' }}>PALABRAS CLAVE EXTRAÍDAS</th>
                 <th style={{ textAlign: 'right', padding: '0.8rem 1.2rem', width: '160px' }}>ACCIÓN</th>
               </tr>
             </thead>

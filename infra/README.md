@@ -1,15 +1,18 @@
 # Infraestructura
 
-Esta carpeta albergará la infraestructura y la automatización de despliegue de
-TechMind.
+Esta carpeta queda reservada para infraestructura versionable y automatización
+futura de TechMind.
 
-OCI es el proveedor objetivo del proyecto. La topología, región, servicios y
-recursos que se utilizarán todavía no están definidos.
+El MVP ya está desplegado manualmente en OCI, región `sa-santiago-1`, sobre una
+VM ARM64/Ampere. La topología vigente utiliza Docker Compose, Nginx como único
+entrypoint público y redes internas para Spring Boot, FastAPI y PostgreSQL. La
+configuración reproducible de los contenedores vive en los Compose de la raíz;
+esta carpeta no contiene actualmente infraestructura aplicada.
 
 Terraform es una opción prevista para gestionar infraestructura como código,
-pero aún no constituye una decisión aprobada. Por ese motivo,
-`infra/terraform/` permanecerá pendiente hasta que exista una definición
-validable.
+pero no se utiliza en el despliegue actual. `infra/terraform/` permanecerá
+pendiente hasta que se apruebe una configuración validable y su adopción aporte
+valor frente al procedimiento manual existente.
 
 No deben versionarse en esta carpeta:
 
