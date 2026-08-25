@@ -187,22 +187,25 @@ export function useKmsData(showToast) {
 
   // 5. Batch Upload Ingestion
   const handleProcessBatch = useCallback(
-    async (textos, closeUploadModal) => {
+    async (textos) => {
       setIsProcessingBatch(true);
       try {
         const response = await uploadBatchLote(textos);
-        setIsProcessingBatch(false);
 
-        const count = response?.archivos_procesados || response?.archivosProcesados || response?.totalProcesados || textos.length;
+        const count =
+          response?.archivos_procesados ??
+          response?.archivosProcesados ??
+          response?.totalProcesados ??
+          textos.length;
         showToast(`Lote completado: ${count} documentos procesados`, 'success');
 
-        if (typeof closeUploadModal === 'function') closeUploadModal();
         reloadDashboardData(selectedCategory);
         return response;
       } catch (err) {
-        setIsProcessingBatch(false);
         showToast(err.message || 'Error al procesar el lote', 'error');
         return null;
+      } finally {
+        setIsProcessingBatch(false);
       }
     },
     [selectedCategory, reloadDashboardData, showToast]
