@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Button from '../common/Button';
 import { parseBatchFileContent } from '../../utils/fileParser';
+import { formatMetric, normalizeBatchSummary } from './batchMetrics';
 
 /**
  * Upload Modal Component for CSV & JSON Bulk Upload (Sprint 3)
@@ -65,10 +66,11 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
 
   const handleSubmitBatch = async () => {
     if (parsedTexts.length === 0) return;
+    const startTime = performance.now();
     const summary = await onProcessBatch(parsedTexts);
-    if (summary) {
-      setBatchSummary(summary);
-    }
+    const clientElapsed = Math.round(performance.now() - startTime);
+
+    if (summary) setBatchSummary(normalizeBatchSummary(summary, parsedTexts.length, clientElapsed));
   };
 
   return (
@@ -201,19 +203,19 @@ export function UploadModal({ isOpen, onClose, onProcessBatch, isProcessingBatch
               <div style={{ background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TOTAL PROCESADOS</span>
                 <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--brand-primary)', margin: '4px 0 0' }}>
-                  {batchSummary.archivos_procesados || parsedTexts.length}
+                  {batchSummary.archivos_procesados ?? parsedTexts.length}
                 </p>
               </div>
               <div style={{ background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TIEMPO TOTAL</span>
                 <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#0EA5E9', margin: '4px 0 0' }}>
-                  {batchSummary.tiempo_total_ms ? `${batchSummary.tiempo_total_ms} ms` : '—'}
+                  {formatMetric(batchSummary.tiempo_total_ms)}
                 </p>
               </div>
               <div style={{ background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PROMEDIO POR NOTA</span>
                 <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#05CD99', margin: '4px 0 0' }}>
-                  {batchSummary.tiempo_promedio_por_texto_ms ? `${batchSummary.tiempo_promedio_por_texto_ms} ms` : '—'}
+                  {formatMetric(batchSummary.tiempo_promedio_por_texto_ms)}
                 </p>
               </div>
             </div>

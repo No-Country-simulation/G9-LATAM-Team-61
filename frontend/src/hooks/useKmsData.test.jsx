@@ -140,4 +140,47 @@ describe('useKmsData Hook Real Lifecycle & State Transitions (DevOps B1 Verifica
     expect(openClustersModal).not.toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith('El backend no devolvió clusters válidos', 'error');
   });
+
+  it('7. handleProcessBatch retorna el LoteResponse completo, conserva el conteo 0 y no cierra el modal', async () => {
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue({ items: [] });
+    const backendResponse = {
+      mensaje: 'Lote procesado exitosamente',
+      archivos_procesados: 0,
+      tiempo_total_ms: 0,
+      tiempo_promedio_por_texto_ms: 0,
+      resultados: [],
+    };
+    vi.spyOn(kmsApi, 'uploadBatchLote').mockResolvedValue(backendResponse);
+    const showToast = vi.fn();
+    const closeUploadModal = vi.fn();
+    const { result } = renderHook(() => useKmsData(showToast));
+
+    let response;
+    await act(async () => {
+      response = await result.current.handleProcessBatch([], closeUploadModal);
+    });
+
+    expect(response).toBe(backendResponse);
+    expect(closeUploadModal).not.toHaveBeenCalled();
+    expect(result.current.isProcessingBatch).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('Lote completado: 0 documentos procesados', 'success');
+  });
+
+  it('8. handleProcessBatch retorna null en error y siempre limpia isProcessingBatch', async () => {
+    vi.spyOn(kmsApi, 'fetchHistory').mockResolvedValue({ items: [] });
+    vi.spyOn(kmsApi, 'uploadBatchLote').mockRejectedValue(new Error('Fallo de lote'));
+    const showToast = vi.fn();
+    const { result } = renderHook(() => useKmsData(showToast));
+
+    let response;
+    await act(async () => {
+      response = await result.current.handleProcessBatch([
+        'Una nota técnica suficientemente larga para procesar.',
+      ]);
+    });
+
+    expect(response).toBeNull();
+    expect(result.current.isProcessingBatch).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('Fallo de lote', 'error');
+  });
 });
