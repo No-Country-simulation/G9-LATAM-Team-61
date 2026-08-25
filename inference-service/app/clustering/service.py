@@ -121,7 +121,7 @@ class ClusteringService:
             
             top_palabras = [p for p, _ in Counter(palabras_cluster).most_common(5)]
             if len(top_palabras) == 0 and feature_names is not None and len(feature_names) > 0:
-                top_palabras = feature_names[:3].tolist()
+                top_palabras = list(feature_names[:3])
             
             etiqueta = self._generar_etiqueta(top_palabras)
             

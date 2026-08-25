@@ -525,3 +525,78 @@ def test_model_unavailable_returns_503():
             assert response.status_code == 503
             data = response.json()
             assert "detail" in data
+
+
+# 13. Pruebas de Enriquecedor Semántico de Dominio (DomainExpander)
+@pytest.mark.parametrize(
+    ("text", "expected_category", "expected_anchor"),
+    [
+        ("Monitoreo con Helm y Prometheus", "DevOps", "docker"),
+        ("Microservicio Kotlin con Spring Boot", "Backend", "spring"),
+        ("Aplicación Android nativa escrita en Kotlin", "Mobile", "android"),
+        ("Aplicación multiplataforma con React Native", "Mobile", "android"),
+        ("API HTTP escrita en Python con FastAPI", "Backend", "spring"),
+        ("Modelo Python entrenado con pandas y sklearn", "Data Science", "pandas"),
+        ("Balanceo de clases mediante SMOTE", "Data Science", "pandas"),
+    ],
+)
+def test_domain_expander_selects_one_dominant_category(
+    text, expected_category, expected_anchor
+):
+    from app.domain_expander import domain_expander
+
+    assert domain_expander.dominant_category(text) == expected_category
+    assert domain_expander.enrich(text) == f"{text} {expected_anchor}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "El equipo organizó un cluster genérico para revisar el inventario.",
+        "El servicio presenta una falla todavía no identificada.",
+        "El componente presenta un comportamiento pendiente de revisión.",
+        "Se revisó el artefacto quasarwidget por una incompatibilidad desconocida.",
+    ],
+)
+def test_domain_expander_leaves_weak_or_unknown_text_unchanged(text):
+    from app.domain_expander import domain_expander
+
+    assert domain_expander.dominant_category(text) is None
+    assert domain_expander.enrich(text) == text
+
+
+def test_domain_expander_avoids_ambiguous_multidomain_injection():
+    from app.domain_expander import domain_expander
+
+    text = "Panel React que consume una API Spring Boot desplegada en Kubernetes."
+    assert domain_expander.dominant_category(text) is None
+    assert domain_expander.enrich(text) == text
+
+
+def test_domain_v2_critical_predictions_via_api():
+    cases = [
+        ("Backend", "Implementación de un microservicio escrito en Kotlin usando Spring Boot."),
+        ("Mobile", "Aplicación Android nativa desarrollada en Kotlin para teléfonos."),
+        ("Mobile", "Desarrollo de una aplicación móvil utilizando React Native."),
+        ("Backend", "Servicio HTTP de inferencia implementado en Python mediante FastAPI."),
+        ("DevOps", "Instalación de charts Helm y monitoreo de métricas mediante Prometheus."),
+        ("Data Science", "Balanceo de clases mediante SMOTE antes del entrenamiento del modelo."),
+    ]
+
+    with TestClient(app) as client:
+        for expected_category, text in cases:
+            response = client.post("/predict", json={"contenido_crudo": text})
+            assert response.status_code == 200
+            data = response.json()
+            assert data["categoria"] == expected_category
+            assert data["palabras_clave"]
+
+
+def test_domain_v2_anchors_do_not_leak_into_keywords():
+    text = "Instalación de charts Helm y monitoreo de métricas mediante Prometheus."
+
+    with TestClient(app) as client:
+        response = client.post("/predict", json={"contenido_crudo": text})
+
+    assert response.status_code == 200
+    assert "docker" not in response.json()["palabras_clave"]
