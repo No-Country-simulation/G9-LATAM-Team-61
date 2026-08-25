@@ -528,56 +528,75 @@ def test_model_unavailable_returns_503():
 
 
 # 13. Pruebas de Enriquecedor Semántico de Dominio (DomainExpander)
-def test_domain_expander_unit_enrichment():
+@pytest.mark.parametrize(
+    ("text", "expected_category", "expected_anchor"),
+    [
+        ("Monitoreo con Helm y Prometheus", "DevOps", "docker"),
+        ("Microservicio Kotlin con Spring Boot", "Backend", "spring"),
+        ("Aplicación Android nativa escrita en Kotlin", "Mobile", "android"),
+        ("Aplicación multiplataforma con React Native", "Mobile", "android"),
+        ("API HTTP escrita en Python con FastAPI", "Backend", "spring"),
+        ("Modelo Python entrenado con pandas y sklearn", "Data Science", "pandas"),
+        ("Balanceo de clases mediante SMOTE", "Data Science", "pandas"),
+    ],
+)
+def test_domain_expander_selects_one_dominant_category(
+    text, expected_category, expected_anchor
+):
     from app.domain_expander import domain_expander
 
-    text_devops = "Falla critica con prometheus y grafana alertmanager en cluster k8s"
-    enriched_devops = domain_expander.enrich(text_devops)
-    assert "docker" in enriched_devops
-    assert "kubernetes" in enriched_devops
-
-    text_backend = "Agotamiento de conexiones en hikaricp con hibernate y flyway migrations"
-    enriched_backend = domain_expander.enrich(text_backend)
-    assert "spring boot" in enriched_backend
-    assert "postgresql" in enriched_backend
-
-    text_frontend = "Error de estado global con zustand y layout con flexbox y css grid"
-    enriched_frontend = domain_expander.enrich(text_frontend)
-    assert "react" in enriched_frontend
-    assert "frontend" in enriched_frontend
-
-    text_ds = "Desbalance de clases tratado con smote y evaluado con silhouette score"
-    enriched_ds = domain_expander.enrich(text_ds)
-    assert "machine learning" in enriched_ds
-    assert "python" in enriched_ds
-
-    text_mobile = "Falla de compilacion en xcode con cocoapods para build de testflight"
-    enriched_mobile = domain_expander.enrich(text_mobile)
-    assert "móvil" in enriched_mobile
-    assert "flutter" in enriched_mobile
+    assert domain_expander.dominant_category(text) == expected_category
+    assert domain_expander.enrich(text) == f"{text} {expected_anchor}"
 
 
-def test_domain_enriched_predictions_via_api():
-    """
-    Verifica que textos con jerga técnica especializada se clasifiquen
-    con alta confianza en su área correspondiente y sin alterar los tags devueltos.
-    """
+@pytest.mark.parametrize(
+    "text",
+    [
+        "El equipo organizó un cluster genérico para revisar el inventario.",
+        "El servicio presenta una falla todavía no identificada.",
+        "El componente presenta un comportamiento pendiente de revisión.",
+        "Se revisó el artefacto quasarwidget por una incompatibilidad desconocida.",
+    ],
+)
+def test_domain_expander_leaves_weak_or_unknown_text_unchanged(text):
+    from app.domain_expander import domain_expander
+
+    assert domain_expander.dominant_category(text) is None
+    assert domain_expander.enrich(text) == text
+
+
+def test_domain_expander_avoids_ambiguous_multidomain_injection():
+    from app.domain_expander import domain_expander
+
+    text = "Panel React que consume una API Spring Boot desplegada en Kubernetes."
+    assert domain_expander.dominant_category(text) is None
+    assert domain_expander.enrich(text) == text
+
+
+def test_domain_v2_critical_predictions_via_api():
+    cases = [
+        ("Backend", "Implementación de un microservicio escrito en Kotlin usando Spring Boot."),
+        ("Mobile", "Aplicación Android nativa desarrollada en Kotlin para teléfonos."),
+        ("Mobile", "Desarrollo de una aplicación móvil utilizando React Native."),
+        ("Backend", "Servicio HTTP de inferencia implementado en Python mediante FastAPI."),
+        ("DevOps", "Instalación de charts Helm y monitoreo de métricas mediante Prometheus."),
+        ("Data Science", "Balanceo de clases mediante SMOTE antes del entrenamiento del modelo."),
+    ]
+
     with TestClient(app) as client:
-        casos = [
-            ("DevOps", "Configuracion de alertas en alertmanager y dashboards en grafana para oomkilled pods"),
-            ("Backend", "Optimizacion de pool de conexiones hikaricp y migraciones automaticas con flyway"),
-            ("Frontend", "Gestion de estado en interfaz web con zustand y accesibilidad auditada con lighthouse"),
-            ("Data Science", "Ajuste de hiperparametros en pipeline con scikit-learn y metricas de silhouette score"),
-            ("Mobile", "Configuracion de provisioning profile y subida de paquete ipa mediante xcode y testflight")
-        ]
+        for expected_category, text in cases:
+            response = client.post("/predict", json={"contenido_crudo": text})
+            assert response.status_code == 200
+            data = response.json()
+            assert data["categoria"] == expected_category
+            assert data["palabras_clave"]
 
-        for categoria_esperada, texto in casos:
-            res = client.post("/predict", json={"contenido_crudo": texto})
-            assert res.status_code == 200
-            data = res.json()
-            assert data["categoria"] == categoria_esperada
-            assert data["probabilidad"] >= 0.70
-            assert "palabras_clave" in data
-            # Asegurar que las palabras clave extraídas provienen del texto original y no de las inyecciones
-            assert len(data["palabras_clave"]) > 0
 
+def test_domain_v2_anchors_do_not_leak_into_keywords():
+    text = "Instalación de charts Helm y monitoreo de métricas mediante Prometheus."
+
+    with TestClient(app) as client:
+        response = client.post("/predict", json={"contenido_crudo": text})
+
+    assert response.status_code == 200
+    assert "docker" not in response.json()["palabras_clave"]

@@ -11,6 +11,22 @@ class DomainExpander:
     - Data Science / Machine Learning / NLP & MLOps
     - Mobile / Android / iOS & Cross-Platform
     """
+    MIN_SCORE = 4
+    MIN_MARGIN = 2
+
+    WEAK_TERMS = {
+        "cluster", "clusters", "servicio", "componente", "componentes",
+        "interfaz", "pipeline", "python", "java", "kotlin", "node", "go",
+    }
+    STRONG_TERMS = {
+        "spring boot", "react native", "android studio", "xcode", "testflight",
+        "fastapi", "helm", "prometheus", "smote", "scikit-learn", "sklearn",
+        "kubernetes", "k8s", "android",
+    }
+    VERY_STRONG_TERMS = {
+        "spring boot", "react native", "android studio",
+    }
+
     def __init__(self):
         self.domain_mappings = {
             'DevOps': [
@@ -29,7 +45,7 @@ class DomainExpander:
             ],
             'Backend': [
                 # Lenguajes, Runtimes y Frameworks
-                r'\b(java|spring|spring boot|spring security|spring data|quarkus|micronaut|kotlin|c#|\.net|dotnet|asp\.net|golang|go|rust|node|node\.js|express|nestjs|django|fastapi|flask|php|laravel|ruby|rails)\b',
+                r'\b(spring boot|spring security|spring data|spring|java|quarkus|micronaut|kotlin|c#|\.net|dotnet|asp\.net|golang|go|rust|node\.js|node|express|nestjs|django|fastapi|flask|php|laravel|ruby|rails)\b',
                 # Bases de Datos Relacionales y NoSQL
                 r'\b(postgresql|postgres|mysql|mariadb|oracle db|sql server|mongodb|cassandra|dynamodb|redis|memcached|neo4j|couchdb)\b',
                 # ORM, Migraciones, Connection Pools y SQL
@@ -73,7 +89,7 @@ class DomainExpander:
                 # Ecosistema Nativo iOS
                 r'\b(swift|swiftui|objective-c|uikit|xcode|cocoapods|spm|testflight|app store connect|provisioning profile|certificate|apns|push notifications ios|info\.plist|ipa)\b',
                 # Ecosistema Nativo Android
-                r'\b(android|kotlin|java android|android studio|jetpack compose|xml layout|gradle|build\.gradle|apk|aab|android app bundle|play store|google play console|proguard|r8|fcm|firebase cloud messaging|intent|activity|fragment|viewmodel|room db)\b',
+                r'\b(android studio|jetpack compose|java android|android|kotlin|xml layout|gradle|build\.gradle|apk|aab|android app bundle|play store|google play console|proguard|r8|fcm|firebase cloud messaging|intent|activity|fragment|viewmodel|room db)\b',
                 # Capacidades Móviles y Dispositivos
                 r'\b(biometrics|camera|geolocation|push notification|push notifications|deeplink|universal links|offline first|sqlite mobile|secure storage|keystore|keychain|mobile|móvil|movil|smartphones|smartphone|tablet|flatlist|provisioning|play store|app store)\b'
             ]
@@ -81,11 +97,11 @@ class DomainExpander:
 
         # Tokens ancla con fuerte peso probabilístico en modelo_hacka.pkl
         self.anchors = {
-            'DevOps': ' docker kubernetes linux nginx terraform devops ',
-            'Backend': ' java spring boot postgresql sql jpa api rest backend ',
-            'Frontend': ' react frontend css web interfaz usuario ',
-            'Data Science': ' pandas numpy machine learning data science python ',
-            'Mobile': ' móvil android ios flutter mobile react native '
+            'DevOps': 'docker',
+            'Backend': 'spring',
+            'Frontend': 'react',
+            'Data Science': 'pandas',
+            'Mobile': 'android'
         }
 
         # Precompilar expresiones regulares para rendimiento ultrarrápido en memoria
@@ -94,25 +110,57 @@ class DomainExpander:
             for cat, patterns in self.domain_mappings.items()
         }
 
+    @classmethod
+    def _term_weight(cls, term: str) -> int:
+        if term in cls.VERY_STRONG_TERMS:
+            return 5
+        if term in cls.STRONG_TERMS:
+            return 4
+        if term in cls.WEAK_TERMS:
+            return 1
+        if ' ' in term:
+            return 4
+        return 3
+
+    def score_categories(self, text: str) -> dict[str, int]:
+        """Acumula evidencia distinta por categoría sin duplicar coincidencias."""
+        if not text or not isinstance(text, str):
+            return {category: 0 for category in self.compiled_rules}
+
+        scores = {}
+        for category, patterns in self.compiled_rules.items():
+            matches = {
+                match.group(0).lower()
+                for regex in patterns
+                for match in regex.finditer(text)
+            }
+            scores[category] = sum(self._term_weight(term) for term in matches)
+        return scores
+
+    def dominant_category(self, text: str) -> str | None:
+        """Elige como máximo un dominio si supera el umbral y al segundo."""
+        ranked = sorted(
+            self.score_categories(text).items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
+        (winner, winner_score), (_, runner_up_score) = ranked[:2]
+        if winner_score < self.MIN_SCORE:
+            return None
+        if winner_score - runner_up_score < self.MIN_MARGIN:
+            return None
+        return winner
+
     def enrich(self, text: str) -> str:
         """
-        Analiza el texto sanitizado e inyecta los tokens ancla correspondientes
-        a las áreas de dominio detectadas para alimentar la inferencia del modelo.
+        Inyecta un solo anchor cuando existe evidencia técnica dominante.
         """
         if not text or not isinstance(text, str):
             return ""
 
-        clean_text = text.lower()
-        injections = []
-
-        for category, patterns in self.compiled_rules.items():
-            for regex in patterns:
-                if regex.search(clean_text):
-                    injections.append(self.anchors[category])
-                    break
-
-        if injections:
-            return f"{text} {' '.join(injections)}"
-        return text
+        category = self.dominant_category(text)
+        if category is None:
+            return text
+        return f"{text} {self.anchors[category]}"
 
 domain_expander = DomainExpander()
