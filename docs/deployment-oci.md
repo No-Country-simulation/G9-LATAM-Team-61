@@ -21,6 +21,18 @@
 El frontend/Nginx es el único entrypoint web. Backend, inference y PostgreSQL
 permanecen en redes internas de Docker.
 
+La documentación de inference se publica exclusivamente a través del Nginx
+HTTPS, sin exponer el puerto 8000:
+
+- `https://techmind-kms.duckdns.org/inference/docs`
+- `https://techmind-kms.duckdns.org/inference/redoc`
+- `https://techmind-kms.duckdns.org/inference/openapi.json`
+
+El overlay configura `ROOT_PATH=/inference` para que Swagger solicite el
+OpenAPI JSON mediante el prefijo público. Nginx retira ese prefijo únicamente
+para las tres rutas documentales; los endpoints de inferencia continúan
+accesibles solo dentro de la red Docker.
+
 ## Prerrequisitos
 
 - acceso SSH mediante clave como usuario administrativo autorizado;
@@ -113,9 +125,9 @@ detén la operación y revisa memoria y disco antes de reintentar.
 Inicia los servicios respetando sus dependencias:
 
 ```bash
-docker compose up -d postgres
-docker compose up -d inference
-docker compose up -d backend
+docker compose -f compose.yaml -f compose.https.yaml up -d postgres
+docker compose -f compose.yaml -f compose.https.yaml up -d inference
+docker compose -f compose.yaml -f compose.https.yaml up -d backend
 docker compose -f compose.yaml -f compose.https.yaml up -d frontend
 docker compose -f compose.yaml -f compose.https.yaml ps
 ```
@@ -202,8 +214,9 @@ este flujo:
 2. incorporar `origin/main` mediante fast-forward;
 3. revisar el delta;
 4. reconstruir únicamente las imágenes afectadas;
-5. recrear los servicios necesarios sin eliminar volúmenes; para Frontend HTTPS
-   se utilizan `compose.yaml` y `compose.https.yaml`;
+5. recrear los servicios necesarios sin eliminar volúmenes; en el despliegue
+   HTTPS se utilizan juntos `compose.yaml` y `compose.https.yaml`, también para
+   inference porque el overlay define su `ROOT_PATH`;
 6. esperar todos los healthchecks;
 7. ejecutar el smoke test público y validar persistencia.
 

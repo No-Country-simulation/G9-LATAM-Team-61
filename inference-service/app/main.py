@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -31,7 +32,8 @@ app = FastAPI(
     description="Microservicio canónico de inferencia IA para clasificación de texto y clustering temático.",
     version="1.0.0",
     lifespan=lifespan,
-    contact={"name": "G9 LATAM Team 61"}
+    contact={"name": "G9 LATAM Team 61"},
+    root_path=os.getenv("ROOT_PATH", "")
 )
 
 # 1. Configuración Segura de CORS (Wildcard sin credenciales para prevenir vulnerabilidades)
