@@ -1,9 +1,14 @@
-# StackPulse: Pipeline de Ingesta, EDA, ETL y Clasificación de Consultas TI
+# TechMind: Pipeline de Ingesta, EDA, ETL y Clasificación de Consultas TI
+
+> El trabajo experimental se desarrolló inicialmente con el nombre
+> **StackPulse**. El artefacto resultante fue integrado posteriormente como el
+> modelo de clasificación de TechMind; se conserva este dato únicamente para
+> trazabilidad histórica.
 
 
 ## 1. Descripción del Proyecto
 
-Este repositorio y cuaderno implementan el pipeline completo de datos y modelamiento predictivo para **StackPulse**, orientado a clasificar automáticamente consultas técnicas a gran escala sobre un corpus superior a 770,000 registros. El desarrollo cubre de punta a punta las fases de análisis exploratorio, saneamiento, ingeniería de características y despliegue de un modelo estocástico incremental.
+El cuaderno documenta el pipeline de datos y modelamiento predictivo utilizado por **TechMind**, orientado a clasificar automáticamente consultas técnicas a gran escala sobre un corpus superior a 770,000 registros. El desarrollo cubre las fases de análisis exploratorio, saneamiento, ingeniería de características y generación del modelo estocástico incremental integrado en `inference-service`.
 
 ## 2. Flujo de Trabajo y Fases del Proceso
 

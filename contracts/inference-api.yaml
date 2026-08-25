@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
   title: Contrato base de API interna de inferencia de TechMind
-  version: 0.3.0-baseline
+  version: 0.4.0-partial
   description: >-
-    Baseline funcional vigente para la integración entre Spring Boot y FastAPI,
-    derivado de la planificación por sprints del Tech Lead. Los detalles
-    operativos pendientes se acordarán sin bloquear la implementación inicial.
-x-estado: baseline-vigente
+    Contrato parcial vigente para la clasificación individual entre Spring Boot
+    y FastAPI. Documenta exclusivamente POST /predict; batch, clustering,
+    health y rutas legacy se describen en el OpenAPI generado por el servicio.
+x-estado: parcial-vigente
 paths:
   /predict:
     post:
       operationId: predecirContenido
       summary: Clasifica un contenido técnico individual
       description: >-
-        Contrato base que deben implementar Data y Backend. Los cambios
-        incompatibles requieren un acuerdo explícito y una actualización de
-        este documento.
+        Contrato canónico implementado por FastAPI y consumido por Spring Boot.
+        Los cambios incompatibles requieren un acuerdo explícito y una
+        actualización de este documento.
       requestBody:
         required: true
         content:
@@ -35,6 +35,16 @@ paths:
               examples:
                 baseline:
                   externalValue: './examples/inference-response.json'
+        '400':
+          description: JSON malformado o no interpretable
+        '415':
+          description: Content-Type no soportado
+        '422':
+          description: Validación de esquema, campos o longitud fallida
+        '500':
+          description: Error interno sanitizado
+        '503':
+          description: Modelo no disponible
 components:
   schemas:
     SolicitudPrediccion:
@@ -45,7 +55,9 @@ components:
       properties:
         contenido_crudo:
           type: string
-          description: Texto compuesto que Spring Boot envía al servicio real
+          minLength: 30
+          maxLength: 5000
+          description: Texto técnico que Spring Boot envía al servicio real
     RespuestaPrediccion:
       type: object
       additionalProperties: false
@@ -56,7 +68,14 @@ components:
       properties:
         categoria:
           type: string
-          description: Categoría predicha; la taxonomía está pendiente de Data
+          enum:
+            - Backend
+            - Frontend
+            - DevOps
+            - Data Science
+            - Mobile
+            - Otros
+          description: Categoría predicha por el modelo
         probabilidad:
           type: number
           format: double
@@ -68,3 +87,10 @@ components:
           items:
             type: string
           description: Palabras clave extraídas por el pipeline
+        tiempo_procesamiento_ms:
+          type:
+            - number
+            - 'null'
+          format: double
+          minimum: 0
+          description: Tiempo de procesamiento de la inferencia en milisegundos

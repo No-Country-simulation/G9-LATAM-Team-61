@@ -82,7 +82,7 @@ export function ConfigModal({ isOpen, onClose, onSaveConfig }) {
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}
         >
           <div>
-            <label htmlFor="input-autotags">Auto-generar Tags (TF-IDF)</label>
+            <label htmlFor="input-autotags">Auto-generar palabras clave</label>
             <p id="desc-autotags" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
               Asigna palabras clave automáticamente.
             </p>

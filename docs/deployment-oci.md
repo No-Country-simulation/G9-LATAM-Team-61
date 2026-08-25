@@ -1,7 +1,8 @@
 # Despliegue manual del MVP en OCI
 
-> Estado al 23 de agosto de 2026. Esta guía documenta el despliegue manual
-> actualmente utilizado. No describe CI/CD automático ni Terraform aplicado.
+> Estado al 25 de agosto de 2026. Esta guía documenta el despliegue manual
+> actualmente utilizado. El repositorio dispone de CI, pero no de CD automático
+> hacia OCI ni de Terraform aplicado.
 
 ## Entorno desplegado
 
@@ -221,6 +222,10 @@ este flujo:
 7. ejecutar el smoke test público y validar persistencia.
 
 No existe actualmente un pipeline CD que realice estos pasos.
+
+Los workflows de CI sí validan por separado Backend, Frontend e inference antes
+de integrar cambios. Esos checks no sustituyen el procedimiento manual de
+actualización y smoke test de la VM.
 
 ## Rollback simple
 

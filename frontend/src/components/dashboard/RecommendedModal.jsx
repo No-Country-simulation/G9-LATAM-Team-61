@@ -58,7 +58,7 @@ export function RecommendedModal({ isOpen, onClose, baseDocument, recommendation
         )}
 
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-          Basado en coincidencia semántica de palabras clave (Tag Overlap) extraídas por el vectorizador IA:
+          Basado en palabras clave compartidas (Tag Overlap) entre documentos de la misma categoría:
         </p>
 
         {isLoading ? (
@@ -88,7 +88,7 @@ export function RecommendedModal({ isOpen, onClose, baseDocument, recommendation
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <Badge category={rec.category}>{rec.category}</Badge>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#05CD99' }}>
-                      Confianza: {rec.confidence || rec.similarity || '85.0%'}
+                      Confianza de clasificación: {rec.confidence || rec.similarity || '85.0%'}
                     </span>
                   </div>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '4px 0', lineHeight: '1.4' }}>

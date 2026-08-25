@@ -1,6 +1,6 @@
 # Arquitectura e integración de TechMind
 
-> Estado vigente al 23 de agosto de 2026: MVP integrado, desplegado y validado
+> Estado vigente al 25 de agosto de 2026: MVP integrado, desplegado y validado
 > en OCI. Este documento describe la materialización actual, no una topología
 > futura de producción.
 
@@ -74,6 +74,15 @@ esta topología.
 Frontend no consume FastAPI ni PostgreSQL directamente. Nginx utiliza el DNS
 interno `backend`; Spring Boot utiliza `inference` y `postgres`.
 
+### Enriquecimiento conservador de dominio
+
+Antes de la inferencia, FastAPI aplica DomainExpander V2: una etapa conservadora
+de enriquecimiento semántico de dominio para reforzar terminología técnica poco
+representada en el dataset. La lógica utiliza evidencia ponderada, umbrales y
+desambiguación antes de añadir, como máximo, una única señal de dominio. No
+modifica el modelo entrenado, no contamina las palabras clave extraídas y no
+garantiza por sí sola una mejora en todas las predicciones.
+
 ## Redes Docker
 
 | Red | Servicios | Propiedad |
@@ -143,11 +152,12 @@ Se validaron desde el punto de entrada público:
 
 ## Operación y evolución
 
-El despliegue actual es manual. OCI no observa GitHub ni despliega cambios de
+El repositorio ejecuta CI separado para Backend, Frontend e inference. El
+despliegue actual es manual: OCI no observa GitHub ni despliega cambios de
 `main` automáticamente. La actualización vigente consiste en sincronización
 controlada, build o recreación de los servicios afectados y smoke test.
 
 El dominio y el soporte HTTPS se materializan mediante un overlay que conserva
 intacto el baseline HTTP local. La renovación usa Certbot en el host y webroot
-sin detener Frontend. CI/CD automático permanece pendiente. La guía operativa
+sin detener Frontend. El CD automático permanece pendiente. La guía operativa
 está en [`deployment-oci.md`](deployment-oci.md).

@@ -1,4 +1,4 @@
-# KMS Frontend — Sistema de Gestión Inteligente del Conocimiento
+# TechMind Frontend — Sistema de Gestión del Conocimiento Técnico
 
 Plataforma Web interactiva para la organización, clasificación temática y exploración de contenido técnico utilizando técnicas de Inteligencia Artificial y Machine Learning. Desarrollada para el **Hackathon ONE G9 — Alura & Oracle LATAM**.
 
@@ -10,11 +10,11 @@ El sistema permite a profesionales y estudiantes de tecnología transformar gran
 
 ### Características Principales:
 - **Clasificación Automática**: Inferencia temática de textos en 5 categorías principales (*Backend*, *Frontend*, *DevOps*, *Data Science*, *Mobile*).
-- **Extracción de Palabras Clave**: Algoritmo TF-IDF para identificar etiquetas clave de cada documento.
-- **Analítica en Tiempo Real**: Métricas de precisión, volumen indexado y latencia de inferencia.
+- **Extracción de Palabras Clave**: Filtrado y frecuencia de términos relevantes de cada documento.
+- **Analítica del corpus**: Confianza media de clasificación, volumen indexado y latencia de inferencia.
 - **Tendencias y Clustering**: Agrupamiento no supervisado mediante el algoritmo K-Means.
-- **Procesamiento por Lotes**: Carga masiva de archivos `.csv` para clasificación asíncrona.
-- **Búsqueda e Historial**: Tabla responsiva con filtro semántico y paginación.
+- **Procesamiento por Lotes**: Carga de archivos `.csv`, `.json` o `.txt` para clasificación por lotes.
+- **Búsqueda e Historial**: Consulta por contenido y palabras clave, filtros y paginación local del historial cargado.
 
 ---
 
@@ -25,28 +25,27 @@ El sistema permite a profesionales y estudiantes de tecnología transformar gran
 | **Framework Web** | React (Vite) | SPA ligera, rápida y moderna |
 | **Estilos & UI** | Vanilla CSS (Tokens) | Sistema de diseño SaaS Enterprise Light basado en `mockup_single_page.html` |
 | **Backend Orquestador** | Java (Spring Boot) | API REST pública y persistencia en PostgreSQL (Integración) |
-| **Inferencia IA** | Python (FastAPI) | Microservicio de inferencia con modelos Scikit-Learn / TF-IDF / K-Means |
+| **Inferencia ML** | Python (FastAPI) | Clasificación Scikit-Learn, extracción de palabras clave y clustering TF-IDF/K-Means |
 
 ---
 
 ## Estructura del Repositorio
 
 ```text
-Front Hackathon/
+frontend/
 ├── public/
-├── sandbox/
-│   ├── hack.txt                # Requerimientos oficiales del Hackathon
-│   ├── planning.md             # Plan general de arquitectura e hitos
-│   ├── mockup_single_page.html # Prototipo interactivo de referencia UI/UX
-│   └── estado_implementacion.md # Seguimiento de avance por fases
 ├── src/
 │   ├── assets/
 │   ├── components/             # Componentes modales y del dashboard
-│   ├── services/               # Cliente API de inferencia
-│   ├── styles/                 # Tokens CSS de diseño visual
+│   ├── hooks/                  # Estado y flujos de la interfaz
+│   ├── services/               # Cliente de la API Spring Boot
+│   ├── styles/                 # Estilos y tokens visuales
+│   ├── utils/                  # Parseo y utilidades de archivos
 │   ├── App.jsx
 │   └── main.jsx
-├── .gitignore
+├── Dockerfile
+├── nginx.conf
+├── nginx.https.conf
 ├── package.json
 └── README.md
 ```

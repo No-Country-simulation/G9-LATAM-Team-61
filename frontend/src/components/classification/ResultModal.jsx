@@ -109,7 +109,7 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
           <div style={{ display: 'grid', gridTemplateColumns: resultData.latencyMs ? '2fr 1fr' : '1fr', gap: '1rem' }}>
             <div>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                PALABRAS CLAVE (TAGS TF-IDF)
+                PALABRAS CLAVE EXTRAÍDAS
               </p>
               <p id="res-tags" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {tags}
@@ -144,7 +144,7 @@ export function ResultModal({ isOpen, onClose, resultData, onSendFeedback, isSen
 
           {feedbackSent ? (
             <p style={{ color: '#05CD99', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>
-              Gracias: Tu retroalimentación fue registrada en la base de datos para reentrenamiento.
+              Gracias: Tu feedback fue registrado para análisis y futuro reentrenamiento.
             </p>
           ) : !showCorrectionSelect ? (
             <div style={{ display: 'flex', gap: '8px' }}>

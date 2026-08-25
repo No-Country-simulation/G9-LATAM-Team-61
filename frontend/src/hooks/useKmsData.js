@@ -223,7 +223,7 @@ export function useKmsData(showToast) {
           prev.map((doc) => (doc.id === id ? { ...doc, category, feedback: comment || 'Corregido' } : doc))
         );
 
-        showToast('Feedback registrado para reentrenamiento continuo', 'success');
+        showToast('Feedback registrado para análisis y futuro reentrenamiento', 'success');
         return true;
       } catch (err) {
         setIsSendingFeedback(false);

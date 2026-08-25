@@ -10,7 +10,7 @@ export function ApiDocsModal({ isOpen, onClose }) {
     {
       method: 'POST',
       path: '/api/contenido',
-      desc: 'Clasifica e indexa una nota técnica (30 a 5,000 caracteres) persistiendo en PostgreSQL y generando tags TF-IDF.',
+      desc: 'Clasifica e indexa una nota técnica (30 a 5,000 caracteres) persistiendo en PostgreSQL y extrayendo palabras clave.',
       status: 'En Línea',
       category: 'Clasificación e Ingesta',
     },
@@ -24,14 +24,14 @@ export function ApiDocsModal({ isOpen, onClose }) {
     {
       method: 'POST',
       path: '/api/contenido/{id}/feedback',
-      desc: 'Retroalimentación del usuario y corrección de categoría para reentrenamiento continuo del clasificador.',
+      desc: 'Registra feedback del usuario y corrige la categoría para análisis y futuro reentrenamiento del clasificador.',
       status: 'En Línea',
       category: 'Clasificación e Ingesta',
     },
     {
       method: 'GET',
       path: '/api/buscar?q={termino}',
-      desc: 'Búsqueda semántica ponderada en tiempo real por similitud de contenido, títulos y palabras clave.',
+      desc: 'Búsqueda textual por coincidencias en el contenido y las palabras clave extraídas.',
       status: 'En Línea',
       category: 'Búsqueda, IA y Analítica',
     },
@@ -59,7 +59,7 @@ export function ApiDocsModal({ isOpen, onClose }) {
     {
       method: 'GET',
       path: '/api/contenido/stats',
-      desc: 'Calcula métricas agregadas del sistema: total indexados, precisión promedio y tiempos de latencia.',
+      desc: 'Calcula métricas agregadas del sistema: total indexados, confianza promedio y tiempos de latencia.',
       status: 'En Línea',
       category: 'Búsqueda, IA y Analítica',
     },
